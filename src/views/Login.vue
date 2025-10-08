@@ -8,6 +8,10 @@
         :rules="loginRules"
         label-position="top"
       >
+        <!-- 头像 -->
+        <div class="avatar-container">
+          <img :src="defaultAvatar" alt="Default Avatar" class="default-avatar" />
+        </div>
         <!-- 账号 & 密码 -->
         <el-form-item label="账号" prop="account">
           <el-input 
@@ -32,14 +36,14 @@
             </template>
           </el-input>
         </el-form-item>
-        <!-- 记住我 & 详细规则 -->
+        <!-- 记住我 & 详细说明 -->
         <el-form-item>
             <div class="rememberandrules">
                 <el-checkbox v-model="loginForm.remember">
                     <span>记住我</span>
                 </el-checkbox>
                 <el-link type="primary" @click="showRulesDialog">
-                    <span>详细规则</span>
+                    <span>详细说明</span>
                 </el-link>
             </div>
         </el-form-item>
@@ -81,6 +85,7 @@ import { User, Lock } from '@element-plus/icons-vue'
 import { login } from '@/api/user'
 import { setLocalToken, removeToken, getToken, setSessionToken } from '@/utils/auth'
 import { useRouter } from 'vue-router'
+import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
 // 表单数据
 const loginForm = reactive({
   account: '',
@@ -143,8 +148,8 @@ function rulesDialogCancel() {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  /* 背景可通过CSS变量自定义 */
-  background: var(--login-bg, linear-gradient(135deg, #f3f5f7 0%, #f3f5f7 100%));
+  /* 更柔和的背景色选项 */
+  background: var(--login-bg, linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%));
   overflow: hidden;
 }
 
@@ -154,9 +159,24 @@ function rulesDialogCancel() {
   max-width: 400px;
   padding: 40px 30px;
   background: rgba(255, 255, 255, 0.9);
-  border-radius: 10px;
+  border-radius: 20px;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(10px);
+}
+
+/* 头像容器样式 */
+.avatar-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* 头像图片样式 */
+.default-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
 }
 
 /* 登录标题样式 */
@@ -194,4 +214,5 @@ function rulesDialogCancel() {
   align-items: center;
   width: 100%;
 }
+
 </style>

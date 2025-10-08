@@ -4,6 +4,48 @@
     <el-header class="header">
       <div class="header-content">
         <h2>111</h2>
+        <!-- 搜索容器 -->
+        <div class="search-container" ref="searchContainerRef">
+          <el-input
+            v-model="searchText"
+            placeholder="请输入搜索内容"
+            class="search-input"
+            @focus="showSearchHistory"
+            @keyup.enter="handleSearch"
+            autocomplete="off"
+            clearable
+          >
+            <template #suffix>
+              <el-icon class="search-icon" @click="handleSearch">
+                <Search />
+              </el-icon>
+            </template>
+          </el-input>
+          
+          <!-- 搜索历史下拉面板 -->
+          <el-card 
+            v-show="showHistory" 
+            class="search-history-panel"
+            shadow="always"
+          >
+            <div class="history-header">
+              <span>搜索历史</span>
+              <el-button type="text" @click="clearHistory">清空</el-button>
+            </div>
+            <div 
+              v-for="item in searchHistory" 
+              :key="item"
+              class="history-item"
+              @click="selectHistory(item)"
+            >
+              {{ item }}
+            </div>
+            <div v-if="searchHistory.length === 0" class="no-history">
+              暂无搜索历史
+            </div>
+          </el-card>
+        </div>
+        <!-- 头像及下拉框 -->
         <div class="nav-items">
           <!-- <el-dropdown>
             <el-avatar :size="40" src="avatar-url" />
@@ -32,7 +74,7 @@
                 </el-dropdown-item>
             </el-dropdown-menu>
             </template>
-            </el-dropdown>
+          </el-dropdown>
 
         </div>
       </div>
@@ -63,14 +105,41 @@
           
           <!-- 右侧自定义内容区域 -->
           <div class="article-content">
-            <!-- 待自定义内容 -->
-             <span>222</span>
+            <!-- 上部浅灰色区域 -->
+            <div class="content-header">
+              <h3>热门</h3>
+            </div>
+            <!-- 下部列表区域 - 一行两个，最多两行 -->
+            <div class="content-list">
+              <el-row :gutter="20">
+                <el-col :span="12" v-for="item in 4" :key="item" class="list-item">
+                  <el-card class="item-card" shadow="hover">
+                    <div class="card-content">
+                      <h4>项目 {{ item }}</h4>
+                      <p>这是第 {{ item }} 个项目的描述内容</p>
+                    </div>
+                  </el-card>
+                </el-col>
+              </el-row>
+            </div>
           </div>
         </div>
       </div>
+      <!-- 查询容器 -->
       <div class="content-wrapper">
         <div class="content-container">
-          222
+          <!-- 新增的按钮容器 -->
+          <div class="button-container">
+            <el-button 
+              v-for="button in buttons" 
+              :key="button.id"
+              :type="button.type || 'default'"
+              @click="handleButtonClick(button)"
+              class="category-button"
+            >
+              {{ button.name }}
+            </el-button>
+          </div>
         </div>
       </div>
     </el-main>
@@ -84,6 +153,9 @@
 import { User, SwitchButton } from '@element-plus/icons-vue'
 import { removeToken } from '@/utils/auth'
 import { ref } from 'vue'
+import { Search } from '@element-plus/icons-vue'
+import { onClickOutside } from '@vueuse/core' 
+import { getSearchHistoryItem, setSearchHistoryItem, removeSearchHistoryItem} from '@/utils/localStorage'
 
 // 轮播图数据
 const carouselImages = ref([
@@ -104,9 +176,68 @@ const carouselImages = ref([
   }
 ])
 
+
+/** 顶部导航的搜索功能实现 */
+// 搜索相关数据
+const searchText = ref('') // 搜索输入框内容
+const showHistory = ref(false) // 控制搜索历史面板显示隐藏
+const searchHistory = ref<string[]>(JSON.parse(getSearchHistoryItem() || '[]') ) // 搜索历史数据
+const searchContainerRef = ref(null) // 用于绑定搜索容器 DOM 元素
+
+// 显示搜索历史
+function showSearchHistory() {
+  showHistory.value = true
+}
+
+// 执行搜索
+function handleSearch() {
+  if (searchText.value.trim()) {
+    if (!searchHistory.value.includes(searchText.value)) {
+      searchHistory.value.unshift(searchText.value)
+      setSearchHistoryItem(JSON.stringify(searchHistory.value))
+      if (searchHistory.value.length > 10) {
+        searchHistory.value.pop()
+      }
+    }
+    showHistory.value = false
+    console.log('搜索内容:', searchText.value)
+  }
+}
+
+// 选择历史记录
+function selectHistory(item :string) {
+  searchText.value = item
+  showHistory.value = false
+  handleSearch()
+}
+
+// 清空搜索历史
+function clearHistory() {
+  searchHistory.value = []
+}
+
+// 使用 onClickOutside 监听点击外部事件
+onClickOutside(searchContainerRef, () => {
+  showHistory.value = false
+})
+
 /** 登出功能实现 */
 function handleLogout() {
   // 发送登出请求
+}
+
+/** 查询对应类型博客功能实现 */
+  // 按钮数据
+const buttons = ref([
+  { id: 1, name: '全部', type: 'primary' },
+  { id: 2, name: '数据结构', type: 'default' },
+  { id: 3, name: 'Spring', type: 'default' },
+  { id: 4, name: '计算机组成原理', type: 'default' }
+])
+  // 按钮点击事件处理
+function handleButtonClick(button :any) {
+    // 自定义事件处理逻辑待实现
+  console.log('点击了按钮:', button.name)
 }
 </script>
 
@@ -154,19 +285,23 @@ function handleLogout() {
   padding: 20px;
 }
 
-/* el-main布局容器样式 */
+/* el-main布局容器样式 
+  这个容器用来包裹.el-container的内容部分
+*/
 .content-wrapper {
   display: flex;
   justify-content: center;
   /* min-height: calc(100vh - 64px - 40px); 减去头部高度和padding */
 }
 
-/* el-container内容容器样式 */
+/* el-container内容容器样式
+   布局容器就用它和.content-wrapper
+*/
 .content-container {
   display: flex;
   gap: 20px; /* 左右区域间距 */
-  width: 100%;  /* 在窄屏幕上占满宽度 */
-  max-width: 1200px; /* 在宽屏幕上不超过1200px */
+  width: 80%;  /* 在窄屏幕上占满宽度 */
+  max-width: 2000px; /* 在宽屏幕上不超过1200px */
 }
 
 /**  广告轮播样式 */
@@ -187,6 +322,125 @@ function handleLogout() {
 .article-content {
   flex: 1;
   min-height: 310px;
+}
+
+
+/* 内容区域上部样式 */
+.content-header {
+  width: 100%;
+  background-color: #f5f5f5; /* 浅灰色背景 */
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+
+/* 内容列表区域样式 */
+.content-list {
+  width: 100%;
+}
+
+/* 内容列表区域的列表项样式 */
+.list-item {
+  margin-bottom: 10px;
+}
+
+/* 列表项卡片样式 */
+.item-card {
+  height: 120px;
+}
+
+/* 卡片内容样式 */
+.card-content h4 {
+  margin: 0 0 8px 0;
+  color: #333;
+}
+
+/* 卡片内容样式 */
+.card-content p {
+  margin: 0;
+  color: #666;
+  font-size: 14px;
+}
+
+
+/* 按钮容器样式 */
+.button-container {
+  width: 100%;
+  background-color: #f5f5f5;
+  padding: 15px 20px;
+  border-radius: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+/* 按钮样式 */
+.category-button {
+  border-radius: 20px;
+}
+
+
+/* 搜索容器样式 */
+.search-container {
+  position: relative;
+  width: 300px;
+  margin: 0 20px;
+}
+
+/* 搜索输入框样式 */
+.search-input {
+  border-radius: 20px;
+}
+
+/* 搜索图标样式 */
+.search-icon {
+  cursor: pointer;
+  color: #909399;
+  font-size: 16px;
+}
+
+.search-icon:hover {
+  color: #409eff;
+}
+
+/* 搜索历史面板样式 */
+.search-history-panel {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  right: 0;
+  z-index: 1001;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* 历史记录头部样式 */
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+/* 历史记录项样式 */
+.history-item {
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.history-item:hover {
+  background-color: #f5f5f5;
+}
+
+/* 无历史记录样式 */
+.no-history {
+  padding: 20px;
+  text-align: center;
+  color: #999;
 }
 
 /* 响应式处理,当屏幕宽度小于768px时，将广告区域和内容区域进行垂直布局 */

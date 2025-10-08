@@ -19,6 +19,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
+      allowedHosts: [
+        '7158f97a.r12.cpolar.top'
+      ],
       proxy: {
         [apiPrefix]: {
           target: apiTarget,
