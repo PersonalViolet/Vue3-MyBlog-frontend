@@ -3,80 +3,94 @@
     <!-- 顶部导航栏 -->
     <el-header class="header">
       <div class="header-content">
-        <h2>111</h2>
-        <!-- 搜索容器 -->
-        <div class="search-container" ref="searchContainerRef">
-          <el-input
-            v-model="searchText"
-            placeholder="请输入搜索内容"
-            class="search-input"
-            @focus="showSearchHistory"
-            @keyup.enter="handleSearch"
-            autocomplete="off"
-            clearable
-          >
-            <template #suffix>
-              <el-icon class="search-icon" @click="handleSearch">
-                <Search />
-              </el-icon>
-            </template>
-          </el-input>
-          
-          <!-- 搜索历史下拉面板 -->
-          <el-card 
-            v-show="showHistory" 
-            class="search-history-panel"
-            shadow="always"
-          >
-            <div class="history-header">
-              <span>搜索历史</span>
-              <el-button type="text" @click="clearHistory">清空</el-button>
-            </div>
-            <div 
-              v-for="item in searchHistory" 
-              :key="item"
-              class="history-item"
-              @click="selectHistory(item)"
-            >
-              {{ item }}
-            </div>
-            <div v-if="searchHistory.length === 0" class="no-history">
-              暂无搜索历史
-            </div>
-          </el-card>
-        </div>
-        <!-- 头像及下拉框 -->
-        <div class="nav-items">
-          <!-- <el-dropdown>
-            <el-avatar :size="40" src="avatar-url" />
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item>个人中心</el-dropdown-item>
-                <el-dropdown-item>退出登录</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown> -->
-          <el-dropdown trigger="hover" placement="bottom-end">
-            <el-avatar 
-            :size="40" 
-            src="avatar-url" 
-            class="avatar-hover"
-            />
-            <template #dropdown>
-            <el-dropdown-menu>
-                <el-dropdown-item>
-                <el-icon><User /></el-icon>
-                个人中心
-                </el-dropdown-item>
-                <el-dropdown-item divided @click="handleLogout">
-                <el-icon><SwitchButton /></el-icon>
-                退出登录
-                </el-dropdown-item>
-            </el-dropdown-menu>
-            </template>
-          </el-dropdown>
 
+        <!-- 左侧内容 -->
+        <div class="left">
+          <div class="logo">
+            <span>待自定义</span>
+          </div>
+          <div class="header-buttons">
+              <el-button
+                class="header-button"
+                v-for="button in headerbuttons"
+                :key="button.text"
+                :type="button.type || 'default'"
+                text
+              >
+                <span>{{ button.text }}</span>
+              </el-button>
+          </div>
         </div>
+        <!-- 中间内容 -->
+        <div class="center">
+          <!-- 搜索容器 -->
+          <div class="search-container" ref="searchContainerRef">
+            <el-input
+              v-model="searchText"
+              placeholder="请输入搜索内容"
+              class="search-input"
+              @focus="showSearchHistory"
+              @keyup.enter="handleSearch"
+              autocomplete="off"
+              clearable
+            >
+              <template #suffix>
+                <el-icon class="search-icon" @click="handleSearch">
+                  <Search />
+                </el-icon>
+              </template>
+            </el-input>
+            
+            <!-- 搜索历史下拉面板 -->
+            <el-card 
+              v-show="showHistory" 
+              class="search-history-panel"
+              shadow="always"
+            >
+              <div class="history-header">
+                <span>搜索历史</span>
+                <el-button type="text" @click="clearHistory">清空</el-button>
+              </div>
+              <div 
+                v-for="item in searchHistory" 
+                :key="item"
+                class="history-item"
+                @click="selectHistory(item)"
+              >
+                {{ item }}
+              </div>
+              <div v-if="searchHistory.length === 0" class="no-history">
+                暂无搜索历史
+              </div>
+            </el-card>
+          </div>
+        </div>
+        <!-- 右侧内容 -->
+        <div class="right">
+          <!-- 头像及下拉框 -->
+          <div class="nav-items">
+            <el-dropdown trigger="hover" placement="bottom-end">
+              <el-avatar 
+              :size="40" 
+              src="avatar-url" 
+              class="avatar-hover"
+              />
+              <template #dropdown>
+              <el-dropdown-menu>
+                  <el-dropdown-item>
+                  <el-icon><User /></el-icon>
+                  个人中心
+                  </el-dropdown-item>
+                  <el-dropdown-item divided @click="handleLogout">
+                  <el-icon><SwitchButton /></el-icon>
+                  退出登录
+                  </el-dropdown-item>
+              </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
+        </div>
+
       </div>
     </el-header>
     
@@ -177,6 +191,15 @@ const carouselImages = ref([
 ])
 
 
+/** 顶部导航按钮功能实现 */
+
+// 按钮数据
+const headerbuttons = [
+  { type: '', text: '首页' },
+  { type: 'primary', text: 'primary' },
+  { type: 'success', text: 'success' },
+] as const
+
 /** 顶部导航的搜索功能实现 */
 // 搜索相关数据
 const searchText = ref('') // 搜索输入框内容
@@ -269,10 +292,45 @@ function handleButtonClick(button :any) {
 
 .header-content {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   height: 100%;
 }
+
+/** 导航栏左侧css样式 */
+.left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+  /* 按钮悬停样式 */
+.header-buttons .header-button span {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.header-buttons .header-button:hover span {
+  transform: translateY(-2px);
+}
+
+/** 导航栏中间css样式 */
+.center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+/** 导航栏右侧css样式 */
+.right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: flex-end;
+}
+
 
 .nav-items {
   display: flex;
@@ -385,7 +443,8 @@ function handleButtonClick(button :any) {
 /* 搜索容器样式 */
 .search-container {
   position: relative;
-  width: 300px;
+  width: 90%;
+  max-width: 600px;
   margin: 0 20px;
 }
 
@@ -442,6 +501,8 @@ function handleButtonClick(button :any) {
   text-align: center;
   color: #999;
 }
+
+
 
 /* 响应式处理,当屏幕宽度小于768px时，将广告区域和内容区域进行垂直布局 */
 @media (max-width: 768px) {
