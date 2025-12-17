@@ -84,6 +84,9 @@ request.interceptors.response.use(
     let errorMsg = '网络异常，请稍后重试'
     if (error.response) {
       switch (error.response.status) {
+        case 400:
+          errorMsg = error.response.data?.msg || '请求参数错误';
+          break
         case 401:
           errorMsg = '未授权，请重新登录'
           removeToken()

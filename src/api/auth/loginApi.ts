@@ -1,5 +1,6 @@
 import request from "@/utils/request";
 import CryptoJS from "crypto-js";
+import { ApiPrefixConstant, VersionConstant } from "@/api/constants";
 
 interface LoginData {
   account: string;
@@ -15,9 +16,9 @@ export function login(data: LoginData) {
   const hashedPassword: string = CryptoJS.SHA256(data.password).toString()
   params.append('account', data.account);
   params.append('password', hashedPassword);
-  params.append('remenber', data.remember.toString());
+  params.append('remember', data.remember.toString());
   return request({
-    url: '/user/Login',
+    url: ApiPrefixConstant.AUTH + VersionConstant.V1 + '/login',
     method: 'post',
     data: params,
     headers: {

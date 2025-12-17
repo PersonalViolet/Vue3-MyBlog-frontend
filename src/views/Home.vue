@@ -170,6 +170,8 @@ import { ref } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { onClickOutside } from '@vueuse/core' 
 import { getSearchHistoryItem, setSearchHistoryItem, removeSearchHistoryItem} from '@/utils/localStorage'
+import { login, register, logout } from '@/api/auth'
+import { ElMessage } from 'element-plus';
 
 // 轮播图数据
 const carouselImages = ref([
@@ -247,6 +249,17 @@ onClickOutside(searchContainerRef, () => {
 /** 登出功能实现 */
 function handleLogout() {
   // 发送登出请求
+  logout().then(() => {
+    // 删除token
+    removeToken()
+    // 删除搜索历史
+    removeSearchHistoryItem()
+    // 弹出
+    ElMessage.success('登出成功')
+  }).catch(err => {
+    console.error('登出失败:', err)
+    ElMessage.error('登出失败')
+  })
 }
 
 /** 查询对应类型博客功能实现 */

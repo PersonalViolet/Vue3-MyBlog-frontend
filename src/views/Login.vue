@@ -57,6 +57,16 @@
             登录
           </el-button>
         </el-form-item>
+        <!-- 新增注册按钮 -->
+        <el-form-item>
+          <el-button 
+            type="default" 
+            class="register-button"
+            @click="goToRegister"
+          >
+            注册账号
+          </el-button>
+        </el-form-item>
       </el-form>
     </div>
     <!-- 规则说明对话框 -->
@@ -82,7 +92,7 @@
 <script lang="ts" setup>
 import { ref, reactive } from 'vue'
 import { User, Lock } from '@element-plus/icons-vue'
-import { login } from '@/api/user'
+import { login } from '@/api/auth';
 import { setLocalToken, removeToken, getToken, setSessionToken } from '@/utils/auth'
 import { useRouter } from 'vue-router'
 import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
@@ -124,6 +134,10 @@ const handleLogin = () => {
   }).catch(err => {
     console.error('登录失败:', err)
   })
+}
+// 跳转到注册页面
+const goToRegister = () => {
+  router.push('/register')
 }
 
 /** 详细规则对话框 */
@@ -191,6 +205,11 @@ function rulesDialogCancel() {
 .login-button {
   width: 100%;
   margin-top: 20px;
+}
+
+/* 注册按钮样式 */
+.register-button {
+  width: 100%;
 }
 
 /* 表单额外内容样式 */
