@@ -3,6 +3,7 @@ import Home from '@/views/Home.vue'
 import Login from '@/views/Login.vue'
 import { getToken } from '@/utils/auth';
 import Register from '@/views/Register.vue';
+import Person from '@/views/Person.vue';
 
 interface Routermeta {
   requiresAuth: boolean; // 是否需要登录
@@ -39,6 +40,16 @@ const routes = [
     meta: {
       requiresAuth: false, // 标记该路由需要登录才能访问
       title: '注册', // 页面标题
+      permissions: null // 访问权限控制
+    }
+  },
+    {
+    path: '/Person',
+    name: 'Person',
+    component: Person,
+    meta: {
+      requiresAuth: false, // 标记该路由需要登录才能访问
+      title: '个人中心', // 页面标题
       permissions: null // 访问权限控制
     }
   }
