@@ -164,14 +164,7 @@
 
 
 <script lang="ts" setup>
-import { User, SwitchButton } from '@element-plus/icons-vue'
-import { removeToken } from '@/utils/auth'
 import { ref } from 'vue'
-import { Search } from '@element-plus/icons-vue'
-import { onClickOutside } from '@vueuse/core' 
-import { getSearchHistoryItem, setSearchHistoryItem, removeSearchHistoryItem} from '@/utils/localStorage'
-import { login, register, logout } from '@/api/auth'
-import { ElMessage } from 'element-plus';
 
 // 轮播图数据
 const carouselImages = ref([
@@ -191,76 +184,6 @@ const carouselImages = ref([
     alt: '广告banner 3'
   }
 ])
-
-
-/** 顶部导航按钮功能实现 */
-
-// 按钮数据
-const headerbuttons = [
-  { type: '', text: '首页' },
-  { type: 'primary', text: 'primary' },
-  { type: 'success', text: 'success' },
-] as const
-
-/** 顶部导航的搜索功能实现 */
-// 搜索相关数据
-const searchText = ref('') // 搜索输入框内容
-const showHistory = ref(false) // 控制搜索历史面板显示隐藏
-const searchHistory = ref<string[]>(JSON.parse(getSearchHistoryItem() || '[]') ) // 搜索历史数据
-const searchContainerRef = ref(null) // 用于绑定搜索容器 DOM 元素
-
-// 显示搜索历史
-function showSearchHistory() {
-  showHistory.value = true
-}
-
-// 执行搜索
-function handleSearch() {
-  if (searchText.value.trim()) {
-    if (!searchHistory.value.includes(searchText.value)) {
-      searchHistory.value.unshift(searchText.value)
-      setSearchHistoryItem(JSON.stringify(searchHistory.value))
-      if (searchHistory.value.length > 10) {
-        searchHistory.value.pop()
-      }
-    }
-    showHistory.value = false
-    console.log('搜索内容:', searchText.value)
-  }
-}
-
-// 选择历史记录
-function selectHistory(item :string) {
-  searchText.value = item
-  showHistory.value = false
-  handleSearch()
-}
-
-// 清空搜索历史
-function clearHistory() {
-  searchHistory.value = []
-}
-
-// 使用 onClickOutside 监听点击外部事件
-onClickOutside(searchContainerRef, () => {
-  showHistory.value = false
-})
-
-/** 登出功能实现 */
-function handleLogout() {
-  // 发送登出请求
-  logout().then(() => {
-    // 删除token
-    removeToken()
-    // 删除搜索历史
-    removeSearchHistoryItem()
-    // 弹出
-    ElMessage.success('登出成功')
-  }).catch(err => {
-    console.error('登出失败:', err)
-    ElMessage.error('登出失败')
-  })
-}
 
 /** 查询对应类型博客功能实现 */
   // 按钮数据
@@ -352,7 +275,6 @@ function handleButtonClick(button :any) {
 }
 
 .main-content {
-  margin-top: 64px; /* 为固定头部留出空间 */
   padding: 20px;
 }
 
