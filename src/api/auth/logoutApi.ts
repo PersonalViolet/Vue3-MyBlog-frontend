@@ -1,6 +1,6 @@
 // src/api/auth/Logout.ts
 import request from "@/utils/request";
-import { ApiPrefixConstant, VersionConstant } from "@/api/constants";
+import { ApiPrefixConstant, VersionConstant } from "@/api/Constant";
 
 /** 登出请求 */
 export function logout() {

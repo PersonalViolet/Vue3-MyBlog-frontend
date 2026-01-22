@@ -42,7 +42,7 @@
 // src/api/auth/Register.ts
 import request from "@/utils/request";
 import CryptoJS from "crypto-js";
-import { ApiPrefixConstant, VersionConstant } from "../constants";
+import { ApiPrefixConstant, VersionConstant } from "../Constant";
 
 interface RegisterData {
   username: string;

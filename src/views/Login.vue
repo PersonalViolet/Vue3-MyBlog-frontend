@@ -96,6 +96,25 @@ import { login } from '@/api/auth';
 import { setLocalToken, removeToken, getToken, setSessionToken } from '@/utils/auth'
 import { useRouter } from 'vue-router'
 import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
+import {
+    setUserInfoItem, 
+    getUserInfoItem,
+    removeUserInfoItem,
+    setSessionUserInfoItem,
+    getSessionUserInfoItem,
+    removeSessionUserInfoItem,
+    setSearchHistoryItem, 
+    getSearchHistoryItem, 
+    removeSearchHistoryItem, 
+    setSessionSearchHistoryItem, 
+    getSessionSearchHistoryItem, 
+    removeSessionSearchHistoryItem
+ } from '@/utils/Storage'
+ import { 
+  type UserLoginVO
+ } from '@/api/auth/loginApi'
+ import { useUserStore } from '@/stores/user'
+
 // 表单数据
 const loginForm = reactive({
   account: '',
@@ -117,18 +136,32 @@ const loginRules = {
 const loginFormRef = ref()
 
 const router = useRouter()
+const userStore = useUserStore()
+
 // 登录功能实现
 const handleLogin = () => {
   // 后续自行实现
-  login(loginForm).then((res: any) => {
+  login(loginForm).then((res: UserLoginVO) => {
+  removeUserInfoItem()
+  removeSessionUserInfoItem()
+  removeToken()
     // 登录成功，存储 Token
   if (loginForm.remember) {
     // 记住我 - 使用本地存储
     setLocalToken(res.token)
+    // 存储用户信息
+    setUserInfoItem(res.userInfoVO)
+    
   } else {
     // 临时登录 - 使用会话存储
     setSessionToken(res.token)
+    // 存储用户信息
+    setSessionUserInfoItem(res.userInfoVO)
   }
+    
+    // 更新 Pinia 状态
+    userStore.refreshUserInfoFromStorage()
+
     // 跳转至首页
     router.push('/')
   }).catch(err => {

@@ -14,4 +14,8 @@ export class ApiPrefixConstant {
   public static readonly FILE = '/file/api';
     // 登录接口
   public static readonly AUTH = '/auth/api';
+    // Article模块接口
+  public static readonly ARTICLE = '/api/article';
+    // User模块接口
+    public static readonly USER = '/api/user';
 }

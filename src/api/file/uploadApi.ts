@@ -1,5 +1,5 @@
 import request from "@/utils/request";
-import { ApiPrefixConstant, VersionConstant } from "@/api/constants";
+import { ApiPrefixConstant, VersionConstant } from "@/api/Constant";
 
 interface UploadResponse {
   url: string;

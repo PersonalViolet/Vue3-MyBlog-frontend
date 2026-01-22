@@ -1,102 +1,7 @@
 <template>
-  <el-container>
-    <!-- 顶部导航栏 -->
-    <el-header class="header">
-      <div class="header-content">
-
-        <!-- 左侧内容 -->
-        <div class="left">
-          <div class="logo">
-            <span>待自定义</span>
-          </div>
-          <div class="header-buttons">
-              <el-button
-                class="header-button"
-                v-for="button in headerbuttons"
-                :key="button.text"
-                :type="button.type || 'default'"
-                text
-              >
-                <span>{{ button.text }}</span>
-              </el-button>
-          </div>
-        </div>
-        <!-- 中间内容 -->
-        <div class="center">
-          <!-- 搜索容器 -->
-          <div class="search-container" ref="searchContainerRef">
-            <el-input
-              v-model="searchText"
-              placeholder="请输入搜索内容"
-              class="search-input"
-              @focus="showSearchHistory"
-              @keyup.enter="handleSearch"
-              autocomplete="off"
-              clearable
-            >
-              <template #suffix>
-                <el-icon class="search-icon" @click="handleSearch">
-                  <Search />
-                </el-icon>
-              </template>
-            </el-input>
-            
-            <!-- 搜索历史下拉面板 -->
-            <el-card 
-              v-show="showHistory" 
-              class="search-history-panel"
-              shadow="always"
-            >
-              <div class="history-header">
-                <span>搜索历史</span>
-                <el-button type="text" @click="clearHistory">清空</el-button>
-              </div>
-              <div 
-                v-for="item in searchHistory" 
-                :key="item"
-                class="history-item"
-                @click="selectHistory(item)"
-              >
-                {{ item }}
-              </div>
-              <div v-if="searchHistory.length === 0" class="no-history">
-                暂无搜索历史
-              </div>
-            </el-card>
-          </div>
-        </div>
-        <!-- 右侧内容 -->
-        <div class="right">
-          <!-- 头像及下拉框 -->
-          <div class="nav-items">
-            <el-dropdown trigger="hover" placement="bottom-end">
-              <el-avatar 
-              :size="40" 
-              src="avatar-url" 
-              class="avatar-hover"
-              />
-              <template #dropdown>
-              <el-dropdown-menu>
-                  <el-dropdown-item>
-                  <el-icon><User /></el-icon>
-                  个人中心
-                  </el-dropdown-item>
-                  <el-dropdown-item divided @click="handleLogout">
-                  <el-icon><SwitchButton /></el-icon>
-                  退出登录
-                  </el-dropdown-item>
-              </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </div>
-        </div>
-
-      </div>
-    </el-header>
-    
-
-     <!-- 页面主体内容 -->
-    <el-main class="main-content">
+  <div class="home-container">
+    <!-- 页面主体内容 -->
+    <div class="main-content">
       <div class="content-wrapper">
         <div class="content-container">
           <!-- 左侧广告轮播图 -->
@@ -156,10 +61,8 @@
           </div>
         </div>
       </div>
-    </el-main>
-
-  </el-container>
-  
+    </div>
+  </div>
 </template>
 
 
@@ -186,92 +89,25 @@ const carouselImages = ref([
 ])
 
 /** 查询对应类型博客功能实现 */
-  // 按钮数据
+// 按钮数据
 const buttons = ref([
   { id: 1, name: '全部', type: 'primary' },
   { id: 2, name: '数据结构', type: 'default' },
   { id: 3, name: 'Spring', type: 'default' },
   { id: 4, name: '计算机组成原理', type: 'default' }
 ])
-  // 按钮点击事件处理
-function handleButtonClick(button :any) {
-    // 自定义事件处理逻辑待实现
+
+// 按钮点击事件处理
+function handleButtonClick(button: any) {
+  // 自定义事件处理逻辑待实现
   console.log('点击了按钮:', button.name)
 }
 </script>
 
 <style scoped>
-
-
-
-.avatar-hover {
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.avatar-hover:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
-}
-
-.header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 64px !important;
-  background-color: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-  padding: 0 20px;
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  height: 100%;
-}
-
-/** 导航栏左侧css样式 */
-.left {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-  /* 按钮悬停样式 */
-.header-buttons .header-button span {
-  display: inline-block;
-  transition: transform 0.3s ease;
-}
-
-.header-buttons .header-button:hover span {
-  transform: translateY(-2px);
-}
-
-/** 导航栏中间css样式 */
-.center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-}
-
-/** 导航栏右侧css样式 */
-.right {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  justify-content: flex-end;
-}
-
-
-.nav-items {
-  display: flex;
-  align-items: center;
-  gap: 20px;
+.home-container {
+  width: 100%;
+  min-height: calc(100vh - 64px);
 }
 
 .main-content {
@@ -372,69 +208,6 @@ function handleButtonClick(button :any) {
 /* 按钮样式 */
 .category-button {
   border-radius: 20px;
-}
-
-
-/* 搜索容器样式 */
-.search-container {
-  position: relative;
-  width: 90%;
-  max-width: 600px;
-  margin: 0 20px;
-}
-
-/* 搜索输入框样式 */
-.search-input {
-  border-radius: 20px;
-}
-
-/* 搜索图标样式 */
-.search-icon {
-  cursor: pointer;
-  color: #909399;
-  font-size: 16px;
-}
-
-.search-icon:hover {
-  color: #409eff;
-}
-
-/* 搜索历史面板样式 */
-.search-history-panel {
-  position: absolute;
-  top: 30px;
-  left: 0;
-  right: 0;
-  z-index: 1001;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-/* 历史记录头部样式 */
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px;
-  border-bottom: 1px solid #eee;
-}
-
-/* 历史记录项样式 */
-.history-item {
-  padding: 10px;
-  cursor: pointer;
-  border-bottom: 1px solid #f5f5f5;
-}
-
-.history-item:hover {
-  background-color: #f5f5f5;
-}
-
-/* 无历史记录样式 */
-.no-history {
-  padding: 20px;
-  text-align: center;
-  color: #999;
 }
 
 

@@ -4,6 +4,7 @@ import Login from '@/views/Login.vue'
 import { getToken } from '@/utils/auth';
 import Register from '@/views/Register.vue';
 import Person from '@/views/Person.vue';
+import ArticleEditor from '@/views/ArticleEditor.vue';
 
 interface Routermeta {
   requiresAuth: boolean; // 是否需要登录
@@ -51,6 +52,16 @@ const routes = [
       requiresAuth: false, // 标记该路由需要登录才能访问
       title: '个人中心', // 页面标题
       permissions: null // 访问权限控制
+    }
+  },
+  {
+    path: '/editor',
+    name: 'ArticleEditor',
+    component: ArticleEditor,
+    meta: {
+      requiresAuth: true,
+      title: '发布文章',
+      permissions: null
     }
   }
 ]
