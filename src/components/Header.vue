@@ -80,6 +80,10 @@
             </el-avatar>
             <template #dropdown>
               <el-dropdown-menu>
+                <el-dropdown-item @click="goToEditor">
+                  <el-icon><EditPen /></el-icon>
+                  发表文章
+                </el-dropdown-item>
                 <el-dropdown-item @click="goToPerson">
                   <el-icon><User /></el-icon>
                   个人中心
@@ -153,7 +157,7 @@
 </template>
 
 <script lang="ts" setup>
-import { User, SwitchButton, Search, Menu as IconMenu, Close } from '@element-plus/icons-vue'
+import { User, SwitchButton, Search, Menu as IconMenu, Close, EditPen } from '@element-plus/icons-vue'
 import { removeToken } from '@/utils/auth'
 import { ref, computed, watch } from 'vue'
 import { onClickOutside } from '@vueuse/core' 
@@ -285,6 +289,11 @@ function handleLogout() {
 /** 跳转到个人中心 */
 function goToPerson() {
   router.push('/Person')
+}
+
+/** 跳转到文章编辑器 */
+function goToEditor() {
+  router.push('/editor')
 }
 </script>
 

@@ -113,6 +113,9 @@
       <div class="section">
         <div class="section-header">
           <span class="section-title">我的文章</span>
+          <el-button type="primary" :icon="EditPen" @click="goToEditor">
+            发表文章
+          </el-button>
         </div>
         <div class="article-list">
           <el-empty
@@ -199,7 +202,7 @@
 
 <script lang="ts" setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { View, Star, Pointer, Picture, Camera } from '@element-plus/icons-vue'
+import { View, Star, Pointer, Picture, Camera, EditPen } from '@element-plus/icons-vue'
 import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -228,8 +231,10 @@ import {
   type UserProfileDTO
 } from '@/api/user/UserProfileApi'
 import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
 
 const userStore = useUserStore()
+const router = useRouter()
 interface UserInfo {
   id: number
   username: string
@@ -466,6 +471,10 @@ function handleImageError(event: Event) {
   target.src = 'https://cube.elemecdn.com/e/fd/0fc7d20532fdaf769a25683617711jpeg.jpeg'; // 默认图片
 }
 
+
+function goToEditor() {
+  router.push('/editor')
+}
 
 // 获取用户信息
 async function loadUserInfo() {

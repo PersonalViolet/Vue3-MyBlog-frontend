@@ -53,10 +53,44 @@
                   :value="option.value"
                 />
               </el-select>
-              <div class="control-btns">
-                <el-button circle size="small" @click="moveBlock(index, -1)" :disabled="index === 0">↑</el-button>
-                <el-button circle size="small" @click="moveBlock(index, 1)" :disabled="index === articleDraft.articleBlocks.length - 1">↓</el-button>
-                <el-button circle size="small" type="danger" @click="removeBlock(index)">×</el-button>
+
+              <div class="right-controls">
+                <div class="block-toolbar" v-if="['paragraph', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'code_block', 'blockquote'].includes(block.blockType)">
+                  <el-tooltip content="粗体 (Ctrl+B)" placement="top" :show-after="500">
+                    <button class="tool-btn" @mousedown.prevent="insertFormat('**', '**', index)"><b>B</b></button>
+                  </el-tooltip>
+                  <el-tooltip content="斜体 (Ctrl+I)" placement="top" :show-after="500">
+                    <button class="tool-btn" @mousedown.prevent="insertFormat('*', '*', index)"><i>I</i></button>
+                  </el-tooltip>
+                  <div class="mini-divider"></div>
+                  <el-tooltip content="列表" placement="top" :show-after="500">
+                     <button class="tool-btn" @mousedown.prevent="insertFormat('- ', '', index)">List</button>
+                  </el-tooltip>
+                  <el-tooltip content="链接" placement="top" :show-after="500">
+                    <button class="tool-btn" @mousedown.prevent="insertFormat('[', '](url)', index)"><el-icon><Link /></el-icon></button>
+                  </el-tooltip>
+                  <el-tooltip content="更多..." placement="top" :show-after="500">
+                    <el-popover placement="bottom" :width="200" trigger="click">
+                      <template #reference>
+                        <button class="tool-btn" @mousedown.prevent><el-icon><MoreFilled /></el-icon></button>
+                      </template>
+                      <div class="more-tools">
+                         <button class="tool-btn" @click="insertFormat('~~', '~~', index)"><s>删除线</s></button>
+                         <button class="tool-btn" @click="insertFormat('1. ', '', index)">有序列表</button>
+                         <button class="tool-btn" @click="insertFormat('- [ ] ', '', index)">任务列表</button>
+                         <button class="tool-btn" @click="insertTable(index)">表格</button>
+                         <button class="tool-btn" @click="insertFormat('> ', '', index)">引用</button>
+                         <button class="tool-btn" @click="insertFormat('\n---\n', '', index)">分割线</button>
+                      </div>
+                    </el-popover>
+                  </el-tooltip>
+                </div>
+
+                <div class="control-btns">
+                  <el-button circle size="small" @click="moveBlock(index, -1)" :disabled="index === 0">↑</el-button>
+                  <el-button circle size="small" @click="moveBlock(index, 1)" :disabled="index === articleDraft.articleBlocks.length - 1">↓</el-button>
+                  <el-button circle size="small" type="danger" @click="removeBlock(index)">×</el-button>
+                </div>
               </div>
             </div>
 
@@ -68,6 +102,9 @@
                 type="textarea"
                 :autosize="{ minRows: 2, maxRows: 10 }"
                 placeholder="请输入内容..."
+                :ref="(el:any) => setInputRef(el, index)"
+                @focus="handleFocus(index)"
+                @keydown="handleKeydown($event, index)"
               />
 
               <!-- 图片编辑 -->
@@ -122,7 +159,7 @@
 
 <script lang="ts" setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
-import { Plus } from '@element-plus/icons-vue'
+import { Plus, Link, Picture, MoreFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { v4 as uuidv4 } from 'uuid'
 import MarkdownIt from 'markdown-it'
@@ -141,6 +178,8 @@ const showPreview = ref(false)
 const splitView = ref(true) // 是否分屏显示（大屏默认分屏）
 const fileInputs = ref<HTMLInputElement[]>([])
 const mdFileInput = ref<HTMLInputElement | null>(null)
+const activeBlockIndex = ref<number>(-1)
+const inputRefs = ref<Record<number, any>>({})
 
 const maxImgSize = 10 * 1024 * 1024
 
@@ -197,6 +236,81 @@ onMounted(() => {
   checkResponsive()
   window.addEventListener('resize', checkResponsive)
 })
+
+function setInputRef(el: any, index: number) {
+  if (el) {
+    inputRefs.value[index] = el
+  }
+}
+
+function handleFocus(index: number) {
+  activeBlockIndex.value = index
+}
+
+function insertFormat(prefix: string, suffix: string, index?: number) {
+  const targetIndex = index !== undefined ? index : activeBlockIndex.value
+  
+  if (targetIndex === -1) {
+    ElMessage.warning('请先点击选择要编辑的内容块')
+    return
+  }
+  
+  const block = articleDraft.articleBlocks[targetIndex]
+  if (!block || !['paragraph', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'code_block', 'blockquote'].includes(block.blockType)) {
+     ElMessage.warning('当前选中块不支持文本格式化')
+     return
+  }
+
+  const inputComponent = inputRefs.value[targetIndex]
+  if (!inputComponent) return
+
+  // 获取原生 textarea
+  const textarea = inputComponent.textarea || inputComponent.$el?.querySelector('textarea')
+  if (!textarea) return
+
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const text = block.text || ''
+  const selected = text.substring(start, end)
+  
+  const replacement = prefix + selected + suffix
+  block.text = text.substring(0, start) + replacement + text.substring(end)
+  
+  // 恢复焦点并选中
+  nextTick(() => {
+    textarea.focus()
+    textarea.setSelectionRange(start + prefix.length, start + prefix.length + selected.length)
+  })
+}
+
+function insertTable(index?: number) {
+  const tableMd = `
+| 列1 | 列2 | 列3 |
+| --- | --- | --- |
+| 内容 | 内容 | 内容 |
+| 内容 | 内容 | 内容 |
+`
+  insertFormat(tableMd, '', index)
+}
+
+function handleKeydown(e: KeyboardEvent, index: number) {
+  if (e.ctrlKey || e.metaKey) {
+    switch(e.key.toLowerCase()) {
+      case 'b':
+        e.preventDefault()
+        insertFormat('**', '**')
+        break
+      case 'i':
+        e.preventDefault()
+        insertFormat('*', '*')
+        break
+      case 's':
+        // Ctrl+S 保存？或者删除线？通常 Ctrl+S 是保存。
+        // 这里不占用 S。
+        break
+    }
+  }
+}
 
 function checkResponsive() {
   splitView.value = window.innerWidth >= 992
@@ -332,13 +446,13 @@ async function handleMdFileChange(event: Event) {
       }
       
       // 调用 API 上传
-      await uploadMarkdownArticle(draftDTO)
+      // await uploadMarkdownArticle(draftDTO)
       
-      ElMessage.success('Markdown 文件解析并上传成功')
+      ElMessage.success('Markdown 文件解析成功')
       
     } catch (error: any) {
       console.error('Markdown upload error:', error)
-      ElMessage.error(error.message || '文件解析或上传失败')
+      ElMessage.error(error.message || '文件解析失败')
     } finally {
       uploadingMd.value = false
       target.value = '' // 重置 input
@@ -349,6 +463,7 @@ async function handleMdFileChange(event: Event) {
 // 解析 Markdown 文本为 Blocks
 function parseMarkdownToBlocks(markdown: string): EditableBlock[] {
   const tokens = md.parse(markdown, {})
+  const lines = markdown.split('\n')
   const blocks: EditableBlock[] = []
   
   for (let i = 0; i < tokens.length; i++) {
@@ -372,7 +487,7 @@ function parseMarkdownToBlocks(markdown: string): EditableBlock[] {
       const inlineToken = tokens[i + 1]
       if (inlineToken && inlineToken.type === 'inline') {
         // 检查是否包含图片
-        const imageToken = inlineToken.children?.find(c => c.type === 'image')
+        const imageToken = inlineToken.children?.find((c: any) => c.type === 'image')
         if (imageToken) {
            blocks.push({
              seq: 0,
@@ -414,6 +529,43 @@ function parseMarkdownToBlocks(markdown: string): EditableBlock[] {
          clientId: uuidv4()
        })
        i = j
+    }else {
+      // 其他类型在遇到下一个上述类型前，都拼接到同一段落中，并且保留markdown 格式
+      // 仅处理 Top-level (level === 0) 且有 map 的 token
+      if (token.level === 0 && token.map) {
+        const startLine = token.map[0]
+        let endLine = lines.length
+
+        // 向后查找下一个已处理的 Top-level Token
+        let k = i + 1
+        while (k < tokens.length) {
+          const t = tokens[k]!
+          if (t.level === 0 && (
+            t.type === 'heading_open' ||
+            t.type === 'paragraph_open' ||
+            t.type === 'fence' ||
+            t.type === 'code_block' ||
+            t.type === 'blockquote_open'
+          )) {
+            if (t.map) {
+              endLine = t.map[0]
+            }
+            break
+          }
+          k++
+        }
+
+        const text = lines.slice(startLine, endLine).join('\n')
+        blocks.push({
+          seq: 0,
+          blockType: 'paragraph',
+          text: text, // 保留原始格式
+          clientId: uuidv4()
+        })
+
+        // 更新索引，跳过已合并的 tokens
+        i = k - 1
+      }
     }
     // 列表等其他类型暂映射为 paragraph 或忽略
   }
@@ -693,5 +845,60 @@ async function handleSubmit() {
   .editor-main {
     flex-direction: column;
   }
+  .title-input {
+    width: 120px;
+  }
+}
+
+.block-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: #f0f2f5;
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+.right-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-divider {
+  width: 1px;
+  height: 14px;
+  background-color: #dcdfe6;
+  margin: 0 4px;
+}
+
+.more-tools {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.more-tools .tool-btn {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.tool-btn {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #606266;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tool-btn:hover {
+  background-color: #e6e8eb;
+  color: #303133;
 }
 </style>
