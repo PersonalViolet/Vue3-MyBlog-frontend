@@ -11,7 +11,10 @@
         <el-button @click="togglePreview">
           {{ showPreview ? '编辑模式' : '预览模式' }}
         </el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit">
+        <el-button type="info" :loading="submitting" @click="handleSubmit(false)">
+          保存文章
+        </el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSubmit(true)">
           发布文章
         </el-button>
       </div>
@@ -622,7 +625,7 @@ function togglePreview() {
 }
 
 // 提交
-async function handleSubmit() {
+async function handleSubmit(isPublish: boolean = false) {
   if (!articleDraft.title.trim()) {
     ElMessage.error('请输入文章标题')
     return
@@ -663,24 +666,6 @@ async function handleSubmit() {
           newBlock.text = ''
         }
       }
-      // 根据 blockType 拼接 Markdown 前缀到 text 字段
-      // 注意：这里我们保留原始的 blockType (h1, paragraph 等)，但也根据需求拼接 Markdown 语法到 text 中
-      // if (newBlock.text) {
-      //   if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(newBlock.blockType)) {
-      //     const level = parseInt(newBlock.blockType.substring(1))
-      //     const hashes = '#'.repeat(level)
-      //     newBlock.text = `${hashes} ${newBlock.text}`
-      //   } else {
-      //     switch (newBlock.blockType) {
-      //       case 'blockquote':
-      //         newBlock.text = `> ${newBlock.text}`
-      //         break
-      //       case 'code_block':
-      //         newBlock.text = `\`\`\`\n${newBlock.text}\n\`\`\``
-      //         break
-      //     }
-      //   }
-      // }
 
       console.log(newBlock)
       
@@ -689,13 +674,15 @@ async function handleSubmit() {
       
       return newBlock
     })
-
     const draftDTO: ArticleDraftDTO = {
       title: articleDraft.title,
       content_format: 'MARKDOWN', // 或其他
       summary: articleDraft.summary,
       remark: articleDraft.remark,
       articleBlocks: blocksToSubmit
+    }
+    if (isPublish) {
+      draftDTO.isPublished = true
     }
 
     // 过滤掉不需要上传文件的 clientId (非图片块)

@@ -135,6 +135,7 @@
               v-for="article in articleList"
               :key="article.id"
               class="article-item"
+              @click="handleArticleClick(article)"
             >
               <div class="article-content-wrapper">
                 <!-- 左侧文字区域 -->
@@ -163,9 +164,9 @@
                 
                 <!-- 右侧封面区域 -->
                 <div class="article-cover-wrapper">
-                  <div v-if="article.cover_asset_url" class="article-cover">
+                  <div v-if="article.coverAssetUrl" class="article-cover">
                     <img 
-                      :src="article.cover_asset_url" 
+                      :src="article.coverAssetUrl" 
                       :alt="article.title"
                       @error="handleImageError"
                     />
@@ -454,7 +455,7 @@ async function fetchArticles() {
     articleList.value = res.records || []
     totalArticles.value = res.total || 0
   } catch (error) {
-    console.error('获取我的文章失败:', error)
+    console.error('获取文章失败:', error)
   } finally {
     loadingArticles.value = false
   }
@@ -474,6 +475,25 @@ function handleImageError(event: Event) {
 
 function goToEditor() {
   router.push('/editor')
+}
+
+// 跳转到文章详情页
+function handleArticleClick(article: Article) {
+  if (!article) {
+    ElMessage.error('文章数据异常')
+    return
+  }
+  
+  const userId = article.userCreateBy
+  const articleId = article.id
+
+  if (!userId || !articleId) {
+    ElMessage.error('无法跳转：缺少必要参数 (userId 或 articleId)')
+    console.error('Invalid article data:', article)
+    return
+  }
+
+  router.push(`/${userId}/${articleId}`)
 }
 
 // 获取用户信息

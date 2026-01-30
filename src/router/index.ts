@@ -63,6 +63,16 @@ const routes = [
       title: '发布文章',
       permissions: null
     }
+  },
+  {
+    path: '/:userId(\\d+)/:articleId(\\d+)',
+    name: 'ArticleDetail',
+    component: () => import('@/views/ArticleDetail.vue'), // 懒加载
+    meta: {
+      requiresAuth: false,
+      title: '文章详情',
+      permissions: null
+    }
   }
 ]
 const router = createRouter({
