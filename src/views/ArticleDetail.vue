@@ -134,8 +134,16 @@
                 暂无评论，快来抢沙发吧~
              </div>
 
-             <div v-if="hasMoreComments" class="load-more-comments">
-                <el-button text bg :loading="commentLoading" @click="loadMoreComments">查看更多评论</el-button>
+             <!-- Infinite Scroll Trigger & Loading State -->
+             <div class="load-more-comments" ref="loadMoreTriggerRef" v-if="hasMoreComments">
+                <div v-if="commentLoading" class="loading-indicator">
+                   <el-icon class="is-loading"><Loading /></el-icon> 加载中...
+                </div>
+                <div v-else class="scroll-trigger"></div>
+             </div>
+             
+             <div v-if="!hasMoreComments && commentsList.length > 0" class="no-more-comments">
+               没有更多评论了~
              </div>
           </div>
         </div>
@@ -191,11 +199,11 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, nextTick, onUnmounted, watch, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { View, Star, Pointer, Edit, ArrowDown, Plus, List, ChatDotRound, Timer } from '@element-plus/icons-vue'
+import { View, Star, Pointer, Edit, ArrowDown, Plus, List, ChatDotRound, Timer, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import { getArticleDetail, updateArticleStatus, incrementArticleViews, type ArticleDetailVO } from '@/api/article/userArticleApi'
-import { getArticleComments, type CommentVO, type GetCommentsParams } from '@/api/comment/CommentApi'
+import { getArticleComments, getArticleCommentsByTime, type CommentVO, type GetCommentsParams, type GetCommentsByTimeParams } from '@/api/comment/CommentApi'
 import { getUserProfile, type UserProfileVO } from '@/api/user/UserProfileApi'
 import { formatDate } from '@/utils/format-date'
 import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
@@ -217,10 +225,12 @@ const articleContentRef = ref<HTMLElement | null>(null)
 // 评论相关
 const commentsList = ref<CommentVO[]>([])
 const commentLoading = ref(false)
+// 使用 union type 来适应不同接口的 cursor 结构
 const commentCursor = ref<{ likeCount?: number, createTime?: string, id?: number } | undefined>(undefined)
 const hasMoreComments = ref(true)
 const commentUserInfoMap = reactive<Map<number, UserProfileVO>>(new Map())
 const sortBy = ref<'hot' | 'time'>('hot')
+const loadMoreTriggerRef = ref<HTMLElement | null>(null) // 底部加载触发器
 
 // 获取评论列表
 async function fetchComments(isLoadMore = false) {
@@ -229,16 +239,23 @@ async function fetchComments(isLoadMore = false) {
   
   commentLoading.value = true
   try {
-    const params: GetCommentsParams = {
-      limit: 5,
-      ...commentCursor.value
+    let res;
+    if (sortBy.value === 'hot') {
+      const params: GetCommentsParams = {
+        limit: 5,
+        likeCount: commentCursor.value?.likeCount,
+        createTime: commentCursor.value?.createTime,
+        id: commentCursor.value?.id
+      }
+      res = await getArticleComments(articleId, params)
+    } else {
+      const params: GetCommentsByTimeParams = {
+        limit: 5,
+        createTime: commentCursor.value?.createTime,
+        id: commentCursor.value?.id
+      }
+      res = await getArticleCommentsByTime(articleId, params)
     }
-    
-    // 如果是按时间排序，这里暂时没有对应 API 参数，假设后端支持某种方式或者暂不支持
-    // 根据需求描述，目前只实现了按热度（点赞）排序的接口逻辑
-    // 如果 sortBy.value === 'time'，可能需要不同的参数，这里暂时只处理 hot
-    
-    const res = await getArticleComments(articleId, params)
     
     if (res.comments && res.comments.length > 0) {
       if (isLoadMore) {
@@ -248,11 +265,13 @@ async function fetchComments(isLoadMore = false) {
       }
       
       // 更新 cursor
-      if (res.likeCount !== null && res.createTime !== null && res.id !== null) {
+      // 根据接口文档，hot 返回 likeCount, createTime, id
+      // time 返回 createTime, id
+      if (res.id !== null) {
         commentCursor.value = {
-          likeCount: res.likeCount,
-          createTime: res.createTime,
-          id: res.id
+          id: res.id,
+          createTime: res.createTime || undefined, // time 接口也会返回 createTime
+          likeCount: res.likeCount || undefined
         }
         hasMoreComments.value = true
       } else {
@@ -292,26 +311,43 @@ function handleSortChange(type: 'hot' | 'time') {
   commentCursor.value = undefined
   hasMoreComments.value = true
   
-  if (type === 'hot') {
-    fetchComments()
-  } else {
-    // 按时间排序逻辑，暂时留空或只提示
-    // ElMessage.info('按时间排序功能开发中')
-    // 为了演示，这里也可以复用 fetchComments，虽然后端可能默认还是按热度
-    // 或者我们可以尝试不传 cursor 看看后端默认行为？
-    // 但根据 API 文档，cursor 是分页用的。
-    // 这里我们先调用 fetchComments，实际效果取决于后端
-    fetchComments()
-  }
+  fetchComments()
 }
 
-function loadMoreComments() {
-  if (hasMoreComments.value) {
-    fetchComments(true)
-  }
-}
+// 自动加载更多 (Infinite Scroll)
+let observer: IntersectionObserver | null = null
 
-// 目录相关
+onMounted(() => {
+  fetchArticleDetail()
+  incrementViews()
+  fetchComments()
+  window.addEventListener('scroll', handleScroll)
+  window.addEventListener('resize', handleResize)
+
+  // 初始化 IntersectionObserver
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && hasMoreComments.value && !commentLoading.value) {
+      fetchComments(true)
+    }
+  }, {
+    rootMargin: '100px' // 提前 100px 触发
+  })
+})
+
+// 监听 loadMoreTriggerRef 的变化，因为 v-if 的原因，它可能还没渲染
+watch(loadMoreTriggerRef, (el) => {
+  if (el && observer) {
+    observer.observe(el)
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
+  window.removeEventListener('resize', handleResize)
+  if (observer) {
+    observer.disconnect()
+  }
+})
 interface TocItem {
   id: string
   text: string
@@ -1001,21 +1037,29 @@ onUnmounted(() => {
 .comment-sort span {
   cursor: pointer;
   transition: color 0.2s;
+  padding: 4px 8px; /* 增加点击区域 */
+  border-radius: 4px;
 }
 
 .comment-sort span.active {
-  color: #333;
+  color: #409eff; /* 浅蓝色高亮 */
   font-weight: 600;
+  background-color: rgba(64, 158, 255, 0.1); /* 可选：增加淡淡的背景色增强状态 */
 }
 
 .comment-sort span:hover {
-  color: #666;
+  color: #409eff; /* 悬浮时变浅蓝色 */
 }
 
 .comment-sort .divider {
-  margin: 0 8px;
+  margin: 0 4px;
   color: #eee;
   cursor: default;
+  padding: 0;
+}
+
+.comment-sort .divider:hover {
+  color: #eee; /* 分隔符不需要变色 */
 }
 
 .comment-item {
@@ -1105,6 +1149,30 @@ onUnmounted(() => {
 .load-more-comments {
   text-align: center;
   margin-top: 24px;
+  min-height: 40px; /* 确保有高度供 IntersectionObserver 监听 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #999;
+  font-size: 14px;
+}
+
+.scroll-trigger {
+  width: 100%;
+  height: 20px;
+}
+
+.no-more-comments {
+  text-align: center;
+  padding: 24px 0;
+  color: #ccc;
+  font-size: 13px;
 }
 
 @media (max-width: 768px) {
