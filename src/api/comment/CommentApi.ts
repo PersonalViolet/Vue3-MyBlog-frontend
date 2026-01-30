@@ -32,13 +32,13 @@ export interface CommentListResult {
 
 export interface GetCommentsParams {
   likeCount?: number;
-  createTime?: string; // TimeStamp or string, user said TimeStamp in description but example is ISO string "2026-01-30T19:39:03z". Let's treat as string or number.
+  createTime?: number; // TimeStamp (Long)
   id?: number;
   limit?: number;
 }
 
 export interface GetCommentsByTimeParams {
-  createTime?: string; // TimeStamp or string
+  createTime?: number; // TimeStamp (Long)
   id?: number;
   limit?: number;
 }

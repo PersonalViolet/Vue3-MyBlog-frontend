@@ -226,7 +226,7 @@ const articleContentRef = ref<HTMLElement | null>(null)
 const commentsList = ref<CommentVO[]>([])
 const commentLoading = ref(false)
 // 使用 union type 来适应不同接口的 cursor 结构
-const commentCursor = ref<{ likeCount?: number, createTime?: string, id?: number } | undefined>(undefined)
+const commentCursor = ref<{ likeCount?: number, createTime?: number, id?: number } | undefined>(undefined)
 const hasMoreComments = ref(true)
 const commentUserInfoMap = reactive<Map<number, UserProfileVO>>(new Map())
 const sortBy = ref<'hot' | 'time'>('hot')
@@ -268,11 +268,19 @@ async function fetchComments(isLoadMore = false) {
       // 根据接口文档，hot 返回 likeCount, createTime, id
       // time 返回 createTime, id
       if (res.id !== null) {
+        // 转换 createTime 为时间戳 (number)
+        let createTimeTimestamp: number | undefined = undefined
+        if (res.createTime) {
+          createTimeTimestamp = new Date(res.createTime).getTime()
+        }
+        console.log('likeCount', res.likeCount)
         commentCursor.value = {
           id: res.id,
-          createTime: res.createTime || undefined, // time 接口也会返回 createTime
-          likeCount: res.likeCount || undefined
+          createTime: createTimeTimestamp, 
+          // likeCount为0时赋值为0，有值时为值，其他情况为undefined
+          likeCount: res.likeCount || (res.likeCount === 0 ? 0 : undefined)
         }
+        console.log('commentCursor:', commentCursor.value)
         hasMoreComments.value = true
       } else {
         hasMoreComments.value = false
