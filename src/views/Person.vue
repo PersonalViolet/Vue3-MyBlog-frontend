@@ -3,13 +3,14 @@
     <div class="person-card">
       <!-- 头像与基本信息 -->
       <div class="person-header">
-        <div class="avatar-wrapper" @click="triggerFileInput">
+        <div class="avatar-wrapper" @click="isSelf && triggerFileInput()" :style="{ cursor: isSelf ? 'pointer' : 'default' }">
           <img :src="avatarUrl" alt="用户头像" class="avatar" />
-          <div class="avatar-overlay">
+          <div class="avatar-overlay" v-if="isSelf">
             <el-icon><Camera /></el-icon>
             <span>修改头像</span>
           </div>
           <input
+            v-if="isSelf"
             type="file"
             ref="fileInput"
             style="display: none"
@@ -19,7 +20,13 @@
         </div>
         <div class="base-info">
           <div v-if="!isEditing">
-            <h2 class="username" @click="startEdit" title="点击修改用户名">{{ userInfo.username || '未设置用户名' }}</h2>
+            <h2 class="username" 
+              @click="isSelf && startEdit()" 
+              :title="isSelf ? '点击修改用户名' : ''"
+              :style="{ cursor: isSelf ? 'pointer' : 'default' }"
+            >
+              {{ userInfo.username || '未设置用户名' }}
+            </h2>
           </div>
           <el-input
             v-else
@@ -29,8 +36,10 @@
             show-word-limit
             class="username-input"
           />
-          <p class="account">账号：{{ userInfo.account || '未设置账号' }}</p>
-          <p class="email">邮箱：{{ userInfo.email || '未绑定邮箱' }}</p>
+          <div v-if="isSelf">
+            <p class="account">账号：{{ userInfo.account || '未设置账号' }}</p>
+            <p class="email">邮箱：{{ userInfo.email || '未绑定邮箱' }}</p>
+          </div>
         </div>
       </div>
 
@@ -39,19 +48,23 @@
       <div class="section">
         <div class="section-header">
           <span class="section-title">个人简介</span>
-          <div v-if="!isEditing">
+          <div v-if="!isEditing && isSelf">
             <el-button type="primary" text @click="startEdit">
               编辑
             </el-button>
           </div>
-          <div v-else class="action-buttons">
+          <div v-else-if="isEditing" class="action-buttons">
             <el-button @click="cancelEdit" :disabled="isSubmitting">取消修改</el-button>
             <el-button type="primary" @click="saveChanges" :loading="isSubmitting">保存修改</el-button>
           </div>
         </div>
         <div v-if="!isEditing">
-          <p class="intro" @click="startEdit" title="点击修改简介">
-            {{ userInfo.intro || '还没有填写个人简介，去简单介绍一下自己吧～' }}
+          <p class="intro" 
+            @click="isSelf && startEdit()" 
+            :title="isSelf ? '点击修改简介' : ''"
+            :style="{ cursor: isSelf ? 'pointer' : 'default' }"
+          >
+            {{ userInfo.intro || (isSelf ? '还没有填写个人简介，去简单介绍一下自己吧～' : '该用户暂无简介') }}
           </p>
         </div>
         <el-input
@@ -82,38 +95,40 @@
         </div>
       </div>
 
-      <!-- 账号安全 -->
-      <el-divider />
-      <div class="section">
-        <div class="section-header">
-          <span class="section-title">账号安全</span>
-        </div>
-        <div class="security-list">
-          <div class="security-item">
-            <div class="security-info">
-              <span class="security-label">登录密码</span>
-              <span class="security-desc">建议定期修改密码，保障账号安全</span>
-            </div>
-            <el-button type="primary" text>修改</el-button>
+      <!-- 账号安全 (仅自己可见) -->
+      <template v-if="isSelf">
+        <el-divider />
+        <div class="section">
+          <div class="section-header">
+            <span class="section-title">账号安全</span>
           </div>
-          <div class="security-item">
-            <div class="security-info">
-              <span class="security-label">邮箱绑定</span>
-              <span class="security-desc">
-                {{ userInfo.email ? '已绑定邮箱，可用于找回密码' : '未绑定邮箱，建议尽快绑定' }}
-              </span>
+          <div class="security-list">
+            <div class="security-item">
+              <div class="security-info">
+                <span class="security-label">登录密码</span>
+                <span class="security-desc">建议定期修改密码，保障账号安全</span>
+              </div>
+              <el-button type="primary" text>修改</el-button>
             </div>
-            <el-button type="primary" text>管理</el-button>
+            <div class="security-item">
+              <div class="security-info">
+                <span class="security-label">邮箱绑定</span>
+                <span class="security-desc">
+                  {{ userInfo.email ? '已绑定邮箱，可用于找回密码' : '未绑定邮箱，建议尽快绑定' }}
+                </span>
+              </div>
+              <el-button type="primary" text>管理</el-button>
+            </div>
           </div>
         </div>
-      </div>
+      </template>
 
-      <!-- 我的文章（分页展示） -->
+      <!-- 文章列表 -->
       <el-divider />
       <div class="section">
         <div class="section-header">
-          <span class="section-title">我的文章</span>
-          <el-button type="primary" :icon="EditPen" @click="goToEditor">
+          <span class="section-title">{{ isSelf ? '我的文章' : '文章列表' }}</span>
+          <el-button v-if="isSelf" type="primary" :icon="EditPen" @click="goToEditor">
             发表文章
           </el-button>
         </div>
@@ -155,8 +170,8 @@
                       <el-icon><Star /></el-icon>
                       {{ article.stars || 0 }}
                     </span>
-                    <span class="stat-item">
-                      <el-icon><Pointer /></el-icon>
+                    <span class="stat-item" :class="{ liked: likedArticleIds.has(article.id) }" @click.stop="toggleArticleLike(article)">
+                      <el-icon><LikeIcon /></el-icon>
                       {{ article.likes || 0 }}
                     </span>
                   </div>
@@ -202,8 +217,9 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { View, Star, Pointer, Picture, Camera, EditPen } from '@element-plus/icons-vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { View, Star, Picture, Camera, EditPen } from '@element-plus/icons-vue'
+import LikeIcon from '@/components/LikeIcon.vue'
 import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -232,10 +248,40 @@ import {
   type UserProfileDTO
 } from '@/api/user/UserProfileApi'
 import { useUserStore } from '@/stores/user'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const userStore = useUserStore()
 const router = useRouter()
+const route = useRoute()
+
+// Determine if viewing self
+const currentLocalUser = computed(() => getSessionUserInfoItem() || getUserInfoItem())
+const isSelf = computed(() => {
+  const localUser = currentLocalUser.value
+  // If not logged in, cannot be "self" in the context of editing
+  if (!localUser || !localUser.id) return false
+  
+  const queryId = Number(route.query.userId)
+  // If no query ID, it is the default "My Profile" page
+  if (!queryId) return true
+  
+  // If query ID exists, check if it matches logged in user
+  return queryId === localUser.id
+})
+
+// 点赞相关
+const likedArticleIds = ref(new Set<number>())
+
+function toggleArticleLike(article: Article) {
+  if (likedArticleIds.value.has(article.id)) {
+    likedArticleIds.value.delete(article.id)
+    article.likes = Math.max((article.likes || 0) - 1, 0)
+  } else {
+    likedArticleIds.value.add(article.id)
+    article.likes = ((article.likes || 0) + 1)
+  }
+}
+
 interface UserInfo {
   id: number
   username: string
@@ -498,82 +544,111 @@ function handleArticleClick(article: Article) {
 
 // 获取用户信息
 async function loadUserInfo() {
-  // 首先尝试从存储中获取用户ID
-  let parsedUserInfo = getSessionUserInfoItem();
-  if (!parsedUserInfo) {
-    parsedUserInfo = getUserInfoItem();
+  const queryUserId = Number(route.query.userId)
+  
+  // Case 1: Viewing specific user (could be self or others)
+  if (queryUserId) {
+    try {
+      const UserProfileVO = await getUserProfile(queryUserId)
+      updateUserInfoState(UserProfileVO)
+      
+      // If viewing self via query param, sync to store
+      if (currentLocalUser.value && currentLocalUser.value.id === queryUserId) {
+        syncToStore(UserProfileVO)
+      }
+    } catch (error) {
+      console.error('获取用户信息失败:', error)
+      ElMessage.error('获取用户信息失败')
+    }
+    return
   }
+
+  // Case 2: Viewing self (default)
+  let parsedUserInfo = getSessionUserInfoItem() || getUserInfoItem()
   
   if (parsedUserInfo && parsedUserInfo.id) {
     try {
-      // 使用API获取最新的用户信息
-      const UserProfileVO: UserProfileVO = await getUserProfile(parsedUserInfo.id);
-      // 更新userInfo响应式引用
-      userInfo.value = {
-        ...userInfo.value,
-        id: UserProfileVO.userId,
-        username: UserProfileVO.username,
-        account: UserProfileVO.account,
-        email: UserProfileVO.email,
-        intro: UserProfileVO.intro || '', // 个人简介
-        avatarUrl: UserProfileVO.avatarUrl || '',
-        articleCount: UserProfileVO.articleCount,
-        starCount: UserProfileVO.starCount,
-        likeCount: UserProfileVO.likeCount
-      };
-
-      // 同步最新数据到 Store
-      if (UserProfileVO.avatarUrl) {
-        userStore.updateAvatar(UserProfileVO.avatarUrl)
-      }
-      if (UserProfileVO.username) {
-        userStore.updateUsername(UserProfileVO.username)
-      }
-      
+      const UserProfileVO = await getUserProfile(parsedUserInfo.id)
+      updateUserInfoState(UserProfileVO)
+      syncToStore(UserProfileVO)
     } catch (error) {
-      console.error('从API获取用户信息失败:', error);
-      // API获取失败时，使用存储中的数据作为备选
-      loadUserInfoFromStorage();
+      console.error('从API获取用户信息失败:', error)
+      loadUserInfoFromStorage()
     }
   } else {
-    // 如果存储中没有用户ID，则使用存储中的数据
-    loadUserInfoFromStorage();
+    loadUserInfoFromStorage()
   }
+}
+
+function updateUserInfoState(data: UserProfileVO) {
+  userInfo.value = {
+    ...userInfo.value,
+    id: data.userId,
+    username: data.username,
+    account: data.account || '', // Note: Account/Email might be masked or empty for others depending on API
+    email: data.email || '',
+    intro: data.intro || '',
+    avatarUrl: data.avatarUrl || '',
+    articleCount: data.articleCount,
+    starCount: data.starCount,
+    likeCount: data.likeCount
+  }
+}
+
+function syncToStore(data: UserProfileVO) {
+  if (data.avatarUrl) userStore.updateAvatar(data.avatarUrl)
+  if (data.username) userStore.updateUsername(data.username)
 }
 
 // 从存储中获取用户信息并解析（备选方案）
 function loadUserInfoFromStorage() {
-  // 首先尝试从sessionStorage获取
-  let parsedUserInfo = getSessionUserInfoItem();
-  if (!parsedUserInfo) {
-    // 如果sessionStorage中没有，则从localStorage获取
-    parsedUserInfo = getUserInfoItem();
-  }
+  let parsedUserInfo = getSessionUserInfoItem() || getUserInfoItem()
   
   if (parsedUserInfo) {
     try {
-      // 更新userInfo响应式引用
       userInfo.value = {
         ...userInfo.value,
         id: parsedUserInfo.id || 0,
         username: parsedUserInfo.username || '未登录用户',
         account: parsedUserInfo.account || '',
         email: parsedUserInfo.email || '',
-        intro: parsedUserInfo.intro || '', // 个人简介
+        intro: parsedUserInfo.intro || '',
         avatarUrl: parsedUserInfo.avatar || '',
         articleCount: parsedUserInfo.articleCount || 0,
         starCount: parsedUserInfo.starCount || 0,
         likeCount: parsedUserInfo.likeCount || 0
-      };
+      }
     } catch (error) {
-      console.error('解析用户信息失败:', error);
+      console.error('解析用户信息失败:', error)
     }
   }
 }
 
+// Watch for route query changes to reload data
+watch(() => route.query.userId, (newId: any) => {
+  loadUserInfo()
+  // Article fetch relies on userInfo.id, so we need to wait for userInfo to update or pass ID directly
+  // Actually loadUserInfo updates userInfo.value.id, so we can call fetchArticles after it.
+  // But since loadUserInfo is async, we should probably call fetchArticles inside or after it.
+  // Simpler: just call both. fetchArticles reads userInfo.value.id.
+  // We need to make sure userInfo is updated before fetching articles.
+  // Let's chain them in the watch.
+})
+
+watch(() => userInfo.value.id, (newId: number) => {
+  if (newId) {
+    fetchArticles()
+  }
+})
+
 onMounted(async () => {
-  await loadUserInfo();
-  fetchArticles()
+  await loadUserInfo()
+  // fetchArticles is called by the watch on userInfo.value.id
+  // But if id doesn't change (e.g. init), watch might not trigger?
+  // Watch with immediate: true or manual call.
+  if (userInfo.value.id) {
+     fetchArticles()
+  }
 })
 </script>
 
@@ -923,6 +998,23 @@ onMounted(async () => {
   .stats-section {
     flex-direction: column;
   }
+}
+
+.article-stats .stat-item {
+  transition: color 0.3s ease;
+}
+
+.article-stats .stat-item:hover {
+  color: #409eff;
+  cursor: pointer;
+}
+
+.article-stats .stat-item.liked {
+  color: #409EFF !important;
+}
+
+.article-stats .stat-item .el-icon {
+  color: inherit;
 }
 </style>
 

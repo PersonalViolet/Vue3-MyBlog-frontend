@@ -43,6 +43,14 @@ export interface GetCommentsByTimeParams {
   limit?: number;
 }
 
+export interface PostCommentDTO {
+  articleId: number;
+  parentId?: number | null;
+  rootId?: number | null;
+  content: string;
+  media?: string; // URL of uploaded image
+}
+
 /**
  * 获取文章评论列表（根级评论）
  * @param articleId 文章ID
@@ -53,6 +61,18 @@ export function getArticleComments(articleId: number, params?: GetCommentsParams
     url: ApiPrefixConstant.ARTICLE + VersionConstant.V1 + `/${articleId}/comments/`,
     method: 'get',
     params
+  })
+}
+
+/**
+ * 发表评论
+ * @param data PostCommentDTO
+ */
+export function postArticleComment(articleId: number, data: PostCommentDTO): Promise<any> {
+  return request({
+    url: ApiPrefixConstant.ARTICLE + VersionConstant.V1 + `/${articleId}/comments`,
+    method: 'post',
+    data
   })
 }
 

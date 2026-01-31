@@ -61,8 +61,8 @@
                   <span class="meta-item">
                     <el-icon><Star /></el-icon> {{ articleDetail.article.stars || 0 }}
                   </span>
-                  <span class="meta-item">
-                    <el-icon><Pointer /></el-icon> {{ articleDetail.article.likes || 0 }}
+                  <span class="meta-item like-action" :class="{ liked: isArticleLiked }" @click="handleArticleLike">
+                    <el-icon><LikeIcon /></el-icon> {{ articleDetail.article.likes || 0 }}
                   </span>
                   <span class="meta-item time" v-if="articleDetail.article.publishedAt">
                     {{ formatDate(articleDetail.article.publishedAt) }}
@@ -110,9 +110,23 @@
              </div>
           </div>
           
+          <div class="comment-input-wrapper">
+             <CommentInput 
+               :article-id="articleId" 
+               :parent-id="null" 
+               :root-id="null"
+               @success="handleCommentSuccess"
+             />
+          </div>
+
           <div class="comment-list" v-loading="commentLoading && commentsList.length === 0">
              <div v-for="comment in commentsList" :key="comment.id" class="comment-item">
-                <el-avatar :size="40" :src="commentUserInfoMap.get(comment.userId)?.avatarUrl || defaultAvatar" class="comment-avatar" />
+                <UserHoverCard 
+                  :user-id="comment.userId" 
+                  :initial-user-info="commentUserInfoMap.get(comment.userId)"
+                >
+                  <el-avatar :size="40" :src="commentUserInfoMap.get(comment.userId)?.avatarUrl || defaultAvatar" class="comment-avatar" />
+                </UserHoverCard>
                 <div class="comment-main">
                    <div class="comment-user-info">
                       <span class="username">{{ commentUserInfoMap.get(comment.userId)?.username || '用户' + comment.userId }}</span>
@@ -120,9 +134,25 @@
                    </div>
                    <div class="comment-content">{{ comment.content }}</div>
                    <div class="comment-actions">
-                      <span class="action-item"><el-icon><Pointer /></el-icon> {{ comment.likeCount || 0 }}</span>
-                      <span class="action-item"><el-icon><ChatDotRound /></el-icon> {{ comment.replyCount || 0 }}</span>
+                      <span class="action-item" :class="{ liked: likedCommentIds.has(comment.id) }" @click="handleCommentLike(comment)">
+                        <el-icon><LikeIcon /></el-icon> {{ comment.likeCount || 0 }}
+                      </span>
+                      <span class="action-item" @click="handleReply(comment)">
+                        <el-icon><ChatDotRound /></el-icon> {{ comment.replyCount || 0 }}
+                      </span>
                    </div>
+                   
+                   <!-- Reply Input -->
+                   <div v-if="replyCommentId === comment.id" class="reply-input-wrapper">
+                      <CommentInput 
+                        :article-id="articleId" 
+                        :parent-id="comment.id" 
+                        :root-id="comment.id"
+                        :target-comment="comment"
+                        @success="handleCommentSuccess"
+                      />
+                   </div>
+
                    <!-- View More Replies Button -->
                    <div v-if="comment.replyCount > 0" class="view-replies-btn">
                       查看 {{ comment.replyCount }} 条回复 <el-icon><ArrowDown /></el-icon>
@@ -199,7 +229,10 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, nextTick, onUnmounted, watch, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { View, Star, Pointer, Edit, ArrowDown, Plus, List, ChatDotRound, Timer, Loading } from '@element-plus/icons-vue'
+import { View, Star, Edit, ArrowDown, Plus, List, ChatDotRound, Timer, Loading } from '@element-plus/icons-vue'
+import LikeIcon from '@/components/LikeIcon.vue'
+import CommentInput from '@/components/CommentInput.vue'
+import UserHoverCard from '@/components/UserHoverCard.vue'
 import { ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import { getArticleDetail, updateArticleStatus, incrementArticleViews, type ArticleDetailVO } from '@/api/article/userArticleApi'
@@ -222,6 +255,31 @@ const articleDetail = ref<ArticleDetailVO | null>(null)
 const authorInfo = ref<UserProfileVO | null>(null)
 const articleContentRef = ref<HTMLElement | null>(null)
 
+// 点赞相关
+const isArticleLiked = ref(false)
+const likedCommentIds = ref(new Set<number>())
+
+function handleArticleLike() {
+  if (!articleDetail.value?.article) return
+  isArticleLiked.value = !isArticleLiked.value
+  // 更新点赞数显示
+  if (isArticleLiked.value) {
+    articleDetail.value.article.likes = (articleDetail.value.article.likes || 0) + 1
+  } else {
+    articleDetail.value.article.likes = Math.max((articleDetail.value.article.likes || 0) - 1, 0)
+  }
+}
+
+function handleCommentLike(comment: CommentVO) {
+  if (likedCommentIds.value.has(comment.id)) {
+    likedCommentIds.value.delete(comment.id)
+    comment.likeCount = Math.max((comment.likeCount || 0) - 1, 0)
+  } else {
+    likedCommentIds.value.add(comment.id)
+    comment.likeCount = (comment.likeCount || 0) + 1
+  }
+}
+
 // 评论相关
 const commentsList = ref<CommentVO[]>([])
 const commentLoading = ref(false)
@@ -231,6 +289,52 @@ const hasMoreComments = ref(true)
 const commentUserInfoMap = reactive<Map<number, UserProfileVO>>(new Map())
 const sortBy = ref<'hot' | 'time'>('hot')
 const loadMoreTriggerRef = ref<HTMLElement | null>(null) // 底部加载触发器
+const replyCommentId = ref<number | null>(null)
+
+// 处理回复点击
+function handleReply(comment: CommentVO) {
+  if (replyCommentId.value === comment.id) {
+    replyCommentId.value = null
+  } else {
+    replyCommentId.value = comment.id
+  }
+}
+
+// 处理评论发表成功
+function handleCommentSuccess(newComment: CommentVO) {
+  if (!newComment) {
+    fetchComments()
+    replyCommentId.value = null
+    return
+  }
+
+  if (newComment.parentId == null || !newComment.parentId) {
+    // 顶级评论，插入到列表头部
+    commentsList.value.unshift(newComment)
+    // 简单的去重逻辑（防止列表刷新导致重复）
+    const ids = new Set<number>()
+    commentsList.value = commentsList.value.filter(c => {
+      if (ids.has(c.id)) return false
+      ids.add(c.id)
+      return true
+    })
+    
+    // 如果没有用户信息，尝试获取（虽然新评论应该是当前用户）
+    if (!commentUserInfoMap.has(newComment.userId) && authorInfo.value) {
+       // 暂时用当前用户信息或者重新获取
+       // 这里可以优化，但简单起见，CommentInput已处理显示
+    }
+  } else {
+    // 回复评论
+    // 找到父评论，增加回复数
+    const parent = commentsList.value.find(c => c.id === newComment.parentId || c.id === newComment.rootId)
+    if (parent) {
+      parent.replyCount = (parent.replyCount || 0) + 1
+    }
+    // 收起回复框
+    replyCommentId.value = null
+  }
+}
 
 // 获取评论列表
 async function fetchComments(isLoadMore = false) {
@@ -598,13 +702,6 @@ async function handleVisibilityChange(command: number) {
   }
 }
 
-onMounted(() => {
-  fetchArticleDetail()
-  incrementViews()
-  fetchComments()
-  window.addEventListener('scroll', handleScroll)
-  window.addEventListener('resize', handleResize)
-})
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
@@ -1188,5 +1285,25 @@ onUnmounted(() => {
   .comment-container {
     padding: 24px 16px;
   }
+}
+
+.like-action {
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.like-action:hover {
+  color: #ADD8E6;
+}
+
+.like-action.liked,
+.action-item.liked {
+  color: #409EFF !important;
+}
+
+/* 确保 SVG 图标颜色跟随文字颜色 */
+.like-action .el-icon,
+.action-item .el-icon {
+  color: inherit;
 }
 </style>

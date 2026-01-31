@@ -124,6 +124,7 @@ const markdownContent = ref('')
 const saving = ref(false)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const previewRef = ref<HTMLElement | null>(null)
+const fileMap = new Map<string, File>()
 
 // 实时渲染
 const renderedHtml = computed(() => {
