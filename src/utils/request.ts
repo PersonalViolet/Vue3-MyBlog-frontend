@@ -15,18 +15,17 @@ const request = axios.create({
 })
 
 // 加载动画实例（全局唯一）
-// let loadingInstance = null
-let loadingInstance: ReturnType<typeof ElLoading.service> | null = null
+//let loadingInstance: ReturnType<typeof ElLoading.service> | null = null
 
 // 请求拦截器
 request.interceptors.request.use(
   (config) => {
     // 1. 显示加载动画（可选，大型表单提交时体验更好）
-    loadingInstance = ElLoading.service({
-      lock: true,
-      text: '加载中...',
-      background: 'rgba(0, 0, 0, 0.1)'
-    })
+    // loadingInstance = ElLoading.service({
+    //   lock: true,
+    //   text: '加载中...',
+    //   background: 'rgba(0, 0, 0, 0.1)'
+    // })
 
     // 2. 携带 Token（从本地存储获取，如 localStorage/sessionStorage）
     const token = getToken()
@@ -43,7 +42,7 @@ request.interceptors.request.use(
   },
   (error) => {
     // 请求错误时关闭加载动画
-    if (loadingInstance) loadingInstance.close()
+    //if (loadingInstance) loadingInstance.close()
     ElMessage.error('请求参数错误：' + error.message)
     return Promise.reject(error)
   }
@@ -53,7 +52,7 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response) => {
     // 关闭加载动画
-    if (loadingInstance) loadingInstance.close()
+    //if (loadingInstance) loadingInstance.close()
 
     const res = response.data // 后端返回的 JSON 数据
 
@@ -78,7 +77,7 @@ request.interceptors.response.use(
   },
   (error) => {
     // 关闭加载动画
-    if (loadingInstance) loadingInstance.close()
+    //if (loadingInstance) loadingInstance.close()
 
     // 处理 HTTP 错误（网络错误、服务器错误等）
     let errorMsg = '网络异常，请稍后重试'
@@ -102,7 +101,7 @@ request.interceptors.response.use(
           errorMsg = '服务器内部错误'
           break
         default:
-          errorMsg = `请求错误（${error.response.status}）`
+          errorMsg = `请求错误（${error.response.status})`
       }
     }
     ElMessage.error(errorMsg)

@@ -334,7 +334,8 @@ onMounted(() => {
 
   // 初始化 IntersectionObserver
   observer = new IntersectionObserver((entries) => {
-    if (entries[0].isIntersecting && hasMoreComments.value && !commentLoading.value) {
+    const firstEntry = entries[0]
+    if (firstEntry && firstEntry.isIntersecting && hasMoreComments.value && !commentLoading.value) {
       fetchComments(true)
     }
   }, {
