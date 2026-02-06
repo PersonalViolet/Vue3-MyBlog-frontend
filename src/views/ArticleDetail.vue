@@ -100,83 +100,7 @@
         </div>
 
         <!-- 评论区 -->
-        <div class="comment-container" id="comments" v-if="articleDetail">
-          <div class="comment-header-row">
-             <h3 class="comment-title">评论</h3>
-             <div class="comment-sort">
-                <span :class="{ active: sortBy === 'hot' }" @click="handleSortChange('hot')">最热</span>
-                <span class="divider">|</span>
-                <span :class="{ active: sortBy === 'time' }" @click="handleSortChange('time')">最新</span>
-             </div>
-          </div>
-          
-          <div class="comment-input-wrapper">
-             <CommentInput 
-               :article-id="articleId" 
-               :parent-id="null" 
-               :root-id="null"
-               @success="handleCommentSuccess"
-             />
-          </div>
-
-          <div class="comment-list" v-loading="commentLoading && commentsList.length === 0">
-             <div v-for="comment in commentsList" :key="comment.id" class="comment-item">
-                <UserHoverCard 
-                  :user-id="comment.userId" 
-                  :initial-user-info="commentUserInfoMap.get(comment.userId)"
-                >
-                  <el-avatar :size="40" :src="commentUserInfoMap.get(comment.userId)?.avatarUrl || defaultAvatar" class="comment-avatar" />
-                </UserHoverCard>
-                <div class="comment-main">
-                   <div class="comment-user-info">
-                      <span class="username">{{ commentUserInfoMap.get(comment.userId)?.username || '用户' + comment.userId }}</span>
-                      <span class="time">{{ formatDate(comment.createTime) }}</span>
-                   </div>
-                   <div class="comment-content">{{ comment.content }}</div>
-                   <div class="comment-actions">
-                      <span class="action-item" :class="{ liked: likedCommentIds.has(comment.id) }" @click="handleCommentLike(comment)">
-                        <el-icon><LikeIcon /></el-icon> {{ comment.likeCount || 0 }}
-                      </span>
-                      <span class="action-item" @click="handleReply(comment)">
-                        <el-icon><ChatDotRound /></el-icon> {{ comment.replyCount || 0 }}
-                      </span>
-                   </div>
-                   
-                   <!-- Reply Input -->
-                   <div v-if="replyCommentId === comment.id" class="reply-input-wrapper">
-                      <CommentInput 
-                        :article-id="articleId" 
-                        :parent-id="comment.id" 
-                        :root-id="comment.id"
-                        :target-comment="comment"
-                        @success="handleCommentSuccess"
-                      />
-                   </div>
-
-                   <!-- View More Replies Button -->
-                   <div v-if="comment.replyCount > 0" class="view-replies-btn">
-                      查看 {{ comment.replyCount }} 条回复 <el-icon><ArrowDown /></el-icon>
-                   </div>
-                </div>
-             </div>
-             
-             <div v-if="commentsList.length === 0 && !commentLoading" class="no-comments">
-                暂无评论，快来抢沙发吧~
-             </div>
-
-             <!-- Infinite Scroll Trigger & Loading State -->
-             <div class="load-more-comments" ref="loadMoreTriggerRef" v-if="hasMoreComments">
-                <div v-if="commentLoading" class="loading-indicator">
-                   <el-icon class="is-loading"><Loading /></el-icon> 加载中...
-                </div>
-                <div v-else class="scroll-trigger"></div>
-             </div>
-             
-             <div v-if="!hasMoreComments && commentsList.length > 0" class="no-more-comments">
-               没有更多评论了~
-             </div>
-          </div>
-        </div>
+        <Comment :article-id="articleId" v-if="articleDetail" id="comments" />
       </div>
 
       <!-- 右侧目录 (替换原有的占位符) -->
@@ -229,18 +153,17 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, nextTick, onUnmounted, watch, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { View, Star, Edit, ArrowDown, Plus, List, ChatDotRound, Timer, Loading } from '@element-plus/icons-vue'
+import { View, Star, Edit, ArrowDown, Plus, List } from '@element-plus/icons-vue'
 import LikeIcon from '@/components/LikeIcon.vue'
-import CommentInput from '@/components/CommentInput.vue'
 import UserHoverCard from '@/components/UserHoverCard.vue'
+import Comment from '@/components/Comment.vue'
 import { ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import { getArticleDetail, updateArticleStatus, incrementArticleViews, type ArticleDetailVO } from '@/api/article/userArticleApi'
-import { getArticleComments, getArticleCommentsByTime, type CommentVO, type GetCommentsParams, type GetCommentsByTimeParams } from '@/api/comment/CommentApi'
 import { getUserProfile, type UserProfileVO } from '@/api/user/UserProfileApi'
 import { formatDate } from '@/utils/format-date'
 import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
-import { throttle } from 'lodash' // 假设项目中有 lodash，如果没有可以使用简易防抖
+import { throttle } from 'lodash'
 
 const route = useRoute()
 const router = useRouter()
@@ -257,7 +180,6 @@ const articleContentRef = ref<HTMLElement | null>(null)
 
 // 点赞相关
 const isArticleLiked = ref(false)
-const likedCommentIds = ref(new Set<number>())
 
 function handleArticleLike() {
   if (!articleDetail.value?.article) return
@@ -270,196 +192,19 @@ function handleArticleLike() {
   }
 }
 
-function handleCommentLike(comment: CommentVO) {
-  if (likedCommentIds.value.has(comment.id)) {
-    likedCommentIds.value.delete(comment.id)
-    comment.likeCount = Math.max((comment.likeCount || 0) - 1, 0)
-  } else {
-    likedCommentIds.value.add(comment.id)
-    comment.likeCount = (comment.likeCount || 0) + 1
-  }
-}
-
-// 评论相关
-const commentsList = ref<CommentVO[]>([])
-const commentLoading = ref(false)
-// 使用 union type 来适应不同接口的 cursor 结构
-const commentCursor = ref<{ likeCount?: number, createTime?: number, id?: number } | undefined>(undefined)
-const hasMoreComments = ref(true)
-const commentUserInfoMap = reactive<Map<number, UserProfileVO>>(new Map())
-const sortBy = ref<'hot' | 'time'>('hot')
-const loadMoreTriggerRef = ref<HTMLElement | null>(null) // 底部加载触发器
-const replyCommentId = ref<number | null>(null)
-
-// 处理回复点击
-function handleReply(comment: CommentVO) {
-  if (replyCommentId.value === comment.id) {
-    replyCommentId.value = null
-  } else {
-    replyCommentId.value = comment.id
-  }
-}
-
-// 处理评论发表成功
-function handleCommentSuccess(newComment: CommentVO) {
-  if (!newComment) {
-    fetchComments()
-    replyCommentId.value = null
-    return
-  }
-
-  if (newComment.parentId == null || !newComment.parentId) {
-    // 顶级评论，插入到列表头部
-    commentsList.value.unshift(newComment)
-    // 简单的去重逻辑（防止列表刷新导致重复）
-    const ids = new Set<number>()
-    commentsList.value = commentsList.value.filter(c => {
-      if (ids.has(c.id)) return false
-      ids.add(c.id)
-      return true
-    })
-    
-    // 如果没有用户信息，尝试获取（虽然新评论应该是当前用户）
-    if (!commentUserInfoMap.has(newComment.userId) && authorInfo.value) {
-       // 暂时用当前用户信息或者重新获取
-       // 这里可以优化，但简单起见，CommentInput已处理显示
-    }
-  } else {
-    // 回复评论
-    // 找到父评论，增加回复数
-    const parent = commentsList.value.find(c => c.id === newComment.parentId || c.id === newComment.rootId)
-    if (parent) {
-      parent.replyCount = (parent.replyCount || 0) + 1
-    }
-    // 收起回复框
-    replyCommentId.value = null
-  }
-}
-
-// 获取评论列表
-async function fetchComments(isLoadMore = false) {
-  if (!articleId) return
-  if (commentLoading.value) return
-  
-  commentLoading.value = true
-  try {
-    let res;
-    if (sortBy.value === 'hot') {
-      const params: GetCommentsParams = {
-        limit: 5,
-        likeCount: commentCursor.value?.likeCount,
-        createTime: commentCursor.value?.createTime,
-        id: commentCursor.value?.id
-      }
-      res = await getArticleComments(articleId, params)
-    } else {
-      const params: GetCommentsByTimeParams = {
-        limit: 5,
-        createTime: commentCursor.value?.createTime,
-        id: commentCursor.value?.id
-      }
-      res = await getArticleCommentsByTime(articleId, params)
-    }
-    
-    if (res.comments && res.comments.length > 0) {
-      if (isLoadMore) {
-        commentsList.value.push(...res.comments)
-      } else {
-        commentsList.value = res.comments
-      }
-      
-      // 更新 cursor
-      // 根据接口文档，hot 返回 likeCount, createTime, id
-      // time 返回 createTime, id
-      if (res.id !== null) {
-        // 转换 createTime 为时间戳 (number)
-        let createTimeTimestamp: number | undefined = undefined
-        if (res.createTime) {
-          createTimeTimestamp = new Date(res.createTime).getTime()
-        }
-        console.log('likeCount', res.likeCount)
-        commentCursor.value = {
-          id: res.id,
-          createTime: createTimeTimestamp, 
-          // likeCount为0时赋值为0，有值时为值，其他情况为undefined
-          likeCount: res.likeCount || (res.likeCount === 0 ? 0 : undefined)
-        }
-        console.log('commentCursor:', commentCursor.value)
-        hasMoreComments.value = true
-      } else {
-        hasMoreComments.value = false
-      }
-
-      // 获取评论用户的信息
-      const userIds = new Set(res.comments.map(c => c.userId))
-      userIds.forEach(uid => {
-        if (!commentUserInfoMap.has(uid)) {
-          getUserProfile(uid).then(userProfile => {
-            commentUserInfoMap.set(uid, userProfile)
-          }).catch(err => {
-             console.warn(`Failed to fetch user info for ${uid}`, err)
-          })
-        }
-      })
-    } else {
-      if (!isLoadMore) {
-        commentsList.value = []
-      }
-      hasMoreComments.value = false
-    }
-  } catch (error: any) {
-    console.error('Failed to fetch comments:', error)
-    ElMessage.error('获取评论失败')
-  } finally {
-    commentLoading.value = false
-  }
-}
-
-function handleSortChange(type: 'hot' | 'time') {
-  if (sortBy.value === type) return
-  sortBy.value = type
-  // 重置状态
-  commentsList.value = []
-  commentCursor.value = undefined
-  hasMoreComments.value = true
-  
-  fetchComments()
-}
-
 // 自动加载更多 (Infinite Scroll)
 let observer: IntersectionObserver | null = null
 
 onMounted(() => {
   fetchArticleDetail()
   incrementViews()
-  fetchComments()
   window.addEventListener('scroll', handleScroll)
   window.addEventListener('resize', handleResize)
-
-  // 初始化 IntersectionObserver
-  observer = new IntersectionObserver((entries) => {
-    const firstEntry = entries[0]
-    if (firstEntry && firstEntry.isIntersecting && hasMoreComments.value && !commentLoading.value) {
-      fetchComments(true)
-    }
-  }, {
-    rootMargin: '100px' // 提前 100px 触发
-  })
-})
-
-// 监听 loadMoreTriggerRef 的变化，因为 v-if 的原因，它可能还没渲染
-watch(loadMoreTriggerRef, (el) => {
-  if (el && observer) {
-    observer.observe(el)
-  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
   window.removeEventListener('resize', handleResize)
-  if (observer) {
-    observer.disconnect()
-  }
 })
 interface TocItem {
   id: string
