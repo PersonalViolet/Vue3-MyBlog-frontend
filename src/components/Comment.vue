@@ -91,9 +91,13 @@ const props = defineProps<{
 // State
 const sortBy = ref<'hot' | 'time'>('hot')
 const commentsTree = ref<CommentVO[]>([])
-const insertOrClean = createInserter(commentsTree.value)
+const insertOrClean = createInserter(commentsTree)
 // Provide insert function to descendants
 provide('insertOrCleanComment', insertOrClean)
+
+watch(() => commentsTree.value, () => {
+  console.log('评论树源已更新')
+})
 
 const loading = ref(false)
 const initialLoading = ref(false)

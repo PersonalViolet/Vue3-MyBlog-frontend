@@ -1,147 +1,147 @@
-# AI Coding Guidelines for User-Vue3-SpaceBlog
+# User-Vue3-SpaceBlog AI 编码指南
 
-## Project Overview
-Vue 3 + TypeScript frontend for a blogging platform. Architecture uses Vite, Pinia for state management, Vue Router for navigation, and Axios with interceptors for API communication. The app supports article creation with rich editor blocks, user authentication with token-based sessions, and multi-storage strategies (localStorage/sessionStorage).
+## 项目概述
+基于 Vue 3 + TypeScript 的博客平台前端。架构使用 Vite、Pinia 进行状态管理、Vue Router 进行导航，以及带拦截器的 Axios 进行 API 通信。应用支持富文本编辑器块创建文章、基于 token 的用户身份验证，以及多存储策略（localStorage/sessionStorage）。
 
-## Tech Stack
-- **Framework**: Vue 3 (Composition API), TypeScript
-- **Build**: Vite 7.1, ESLint 9, vue-tsc
-- **HTTP**: Axios with global interceptors (token injection, error handling)
-- **State**: Pinia stores (user info, auth state)
+## 技术栈
+- **框架**: Vue 3 (Composition API), TypeScript
+- **构建**: Vite 7.1, ESLint 9, vue-tsc
+- **HTTP**: Axios（带全局拦截器，token 注入，错误处理）
+- **状态管理**: Pinia stores（用户信息，认证状态）
 - **UI**: Element Plus 2.11
-- **Router**: Vue Router 4 with route guards and metadata
+- **路由**: Vue Router 4（带路由守卫和元数据）
 
-## Architecture Patterns
+## 架构模式
 
-### 1. API Layer (`/src/api/`)
-**Pattern**: Service-based API modules organized by feature domain.
+### 1. API 层 (`/src/api/`)
+**模式**: 基于服务的 API 模块，按功能领域组织。
 
-- **API Constants** ([Constant.ts](src/api/Constant.ts)): Centralized endpoint prefixes
-  - `ApiPrefixConstant.ARTICLE`, `.AUTH`, `.USER`, `.FILE` (versioned with `VersionConstant.V1`)
-  - Example: GET `/api/article/v1/{userId}` for user articles
+- **API 常量** ([Constant.ts](src/api/Constant.ts)): 集中管理的端点前缀
+  - `ApiPrefixConstant.ARTICLE`, `.AUTH`, `.USER`, `.FILE`（使用 `VersionConstant.V1` 版本控制）
+  - 示例: GET `/api/article/v1/{userId}` 获取用户文章
 
-- **API Functions**: Each domain has `index.ts` exporting typed functions
-  - [userArticleApi.ts](src/api/article/userArticleApi.ts): `getUserPublicArticles(userId, params)` returns `Promise<PageResult<Article>>`
-  - [articleEditorApi.ts](src/api/article/articleEditorApi.ts): `saveArticle(draftDTO, filesMap)` handles FormData with JSON + files
-  - Return types must match `PageResult<T>` interface (records, total)
+- **API 函数**: 每个领域都有 `index.ts` 导出类型化函数
+  - [userArticleApi.ts](src/api/article/userArticleApi.ts): `getUserPublicArticles(userId, params)` 返回 `Promise<PageResult<Article>>`
+  - [articleEditorApi.ts](src/api/article/articleEditorApi.ts): `saveArticle(draftDTO, filesMap)` 处理 FormData（包含 JSON + 文件）
+  - 返回类型必须匹配 `PageResult<T>` 接口（records, total）
 
-**When adding endpoints**: Define typed DTOs, use constants for URLs, ensure request/response match interceptor expectations.
+**添加端点时**: 定义类型化 DTO，使用常量定义 URL，确保请求/响应匹配拦截器期望。
 
-### 2. HTTP Client ([request.ts](src/utils/request.ts))
-**Interceptor Chain**:
-- **Request**: Injects `Authorization: Bearer {token}`, shows ElLoading overlay
-- **Response**: Expects `{ code: 200, data: {...} }` format; extracts `.data`; handles error codes
-  - Code 2001: Token expired → redirects to `/Login`
-  - Other non-200: Shows ElMessage error, rejects promise
-- **Error Fallback**: HTTP 401/403 clear token and redirect; 404/400 show specific messages
+### 2. HTTP 客户端 ([request.ts](src/utils/request.ts))
+**拦截器链**:
+- **请求**: 注入 `Authorization: Bearer {token}`，显示 ElLoading 遮罩
+- **响应**: 期望 `{ code: 200, data: {...} }` 格式；提取 `.data`；处理错误码
+  - Code 2001: Token 过期 → 重定向到 `/Login`
+  - 其他非 200: 显示 ElMessage 错误，拒绝 promise
+- **错误回退**: HTTP 401/403 清除 token 并重定向；404/400 显示特定消息
 
-**Critical**: All API functions receive resolved `.data` (not full response). Error handling happens via interceptors.
+**关键**: 所有 API 函数接收已解析的 `.data`（而非完整响应）。错误处理通过拦截器进行。
 
-### 3. State Management ([stores/user.ts](src/stores/user.ts))
-**Pinia store pattern** with persistent dual-storage:
-- Reads from sessionStorage OR localStorage on init (priority order)
-- `setUserInfo()` respects `rememberMe` flag:
-  - `rememberMe: false` → sessionStorage (temporary)
-  - `rememberMe: true` → localStorage (persistent)
-- Computed `avatarUrl` with default fallback to `defaultAvatar.svg`
+### 3. 状态管理 ([stores/user.ts](src/stores/user.ts))
+**Pinia store 模式**，带持久化双存储:
+- 初始化时从 sessionStorage 或 localStorage 读取（优先级顺序）
+- `setUserInfo()` 遵循 `rememberMe` 标志:
+  - `rememberMe: false` → sessionStorage（临时）
+  - `rememberMe: true` → localStorage（持久）
+- 计算属性 `avatarUrl` 带默认回退到 `defaultAvatar.svg`
 - Actions: `setUserInfo()`, `updateAvatar()`, `clearUserInfo()`
 
-**When modifying**: Keep Storage sync logic; update both ref and storage atomically.
+**修改时**: 保持 Storage 同步逻辑；原子性更新 ref 和 storage。
 
-### 4. Authentication Flow ([utils/auth.ts](src/utils/auth.ts))
-- **Token Storage**: Keys `Authorization` in both localStorage + sessionStorage (checked in order)
-- **Functions**: `getToken()`, `setLocalToken()`, `setSessionToken()`, `removeToken()`
-- **Router Guards** ([router/index.ts](src/router/index.ts)): Route meta `requiresAuth: boolean` controls access; redirects unauthorized users to `/Login`
+### 4. 身份验证流程 ([utils/auth.ts](src/utils/auth.ts))
+- **Token 存储**: 键名 `Authorization` 同时存在于 localStorage + sessionStorage（按顺序检查）
+- **函数**: `getToken()`, `setLocalToken()`, `setSessionToken()`, `removeToken()`
+- **路由守卫** ([router/index.ts](src/router/index.ts)): 路由元信息 `requiresAuth: boolean` 控制访问；未授权用户重定向到 `/Login`
 
-### 5. View Architecture
-**Editor Pattern** ([ArticleEditor.vue](src/views/ArticleEditor.vue) - 789 lines):
-- Manages `articleDraft` with nested block structure (`ArticleDraftDTO`)
-- Supports split-view preview (toggle via button)
-- File uploads tracked in `Map<clientId, File>` for later multipart submission
-- Submission via `saveArticle()` passes both JSON metadata + file blobs
+### 5. 视图架构
+**编辑器模式** ([ArticleEditor.vue](src/views/ArticleEditor.vue) - 789 行):
+- 管理 `articleDraft`，包含嵌套块结构（`ArticleDraftDTO`）
+- 支持分屏预览（通过按钮切换）
+- 文件上传在 `Map<clientId, File>` 中跟踪，用于后续的 multipart 提交
+- 通过 `saveArticle()` 提交，传递 JSON 元数据 + 文件 blobs
 
-**Form Pattern**: Uses Element Plus components (el-input, el-select, el-button); reactive v-model binding; loading states on buttons.
+**表单模式**: 使用 Element Plus 组件（el-input, el-select, el-button）；响应式 v-model 绑定；按钮加载状态。
 
-## Development Workflow
+## 开发工作流
 
-### Build & Run
+### 构建与运行
 ```bash
-npm run dev          # Vite dev server, hot-reload
-npm run build        # Type-check + minify (production)
-npm run type-check   # vue-tsc validation
-npm run lint         # ESLint with auto-fix
+npm run dev          # Vite 开发服务器，热重载
+npm run build        # 类型检查 + 压缩（生产环境）
+npm run type-check   # vue-tsc 验证
+npm run lint         # ESLint 自动修复
 ```
 
-### Environment Setup
-- Node 20.19+ required (specified in package.json engines)
-- Vite uses `import.meta.env.VITE_APP_BASE_API` for backend URL
-- Ensure `.env.local` defines `VITE_APP_BASE_API` (e.g., `http://localhost:8080/api`)
+### 环境设置
+- 需要 Node 20.19+（在 package.json engines 中指定）
+- Vite 使用 `import.meta.env.VITE_APP_BASE_API` 作为后端 URL
+- 确保 `.env.local` 定义了 `VITE_APP_BASE_API`（例如：`http://localhost:8080/api`）
 
-## Project-Specific Conventions
+## 项目特定约定
 
-### Naming
-- **API Functions**: Verb + Feature (e.g., `getUserPublicArticles`, `saveArticle`)
-- **DTOs**: Suffixed with `DTO` (e.g., `ArticleDraftDTO`, `ArticleBlockDraftDTO`)
-- **Storage Keys**: PascalCase in constants (e.g., `USER_INFO_KEY`, `SEARCHHISTORY_KEY`)
-- **Routes**: Lowercase paths (e.g., `/Login`, `/Person` as component names; URLs lowercase)
+### 命名规范
+- **API 函数**: 动词 + 功能（例如：`getUserPublicArticles`, `saveArticle`）
+- **DTOs**: 以 `DTO` 为后缀（例如：`ArticleDraftDTO`, `ArticleBlockDraftDTO`）
+- **Storage 键**: 常量中使用 PascalCase（例如：`USER_INFO_KEY`, `SEARCHHISTORY_KEY`）
+- **路由**: 小写路径（例如：`/Login`, `/Person` 作为组件名；URL 为小写）
 
 ### TypeScript
-- Enable strict mode; interfaces for all API contracts
-- Use discriminated unions for block types (e.g., `blockType: 'text' | 'image' | 'video'`)
-- Ref types: `ref<T>()`, computed selectors for derived state
+- 启用严格模式；所有 API 契约使用接口
+- 对块类型使用判别联合类型（例如：`blockType: 'text' | 'image' | 'video'`）
+- Ref 类型: `ref<T>()`，派生状态使用计算选择器
 
-### Storage Persistence
-- User info: Dual strategy via `Storage.ts` helpers (`getSessionUserInfoItem`, `getUserInfoItem`)
-- Search history: JSON serialization with parse-on-read (fallback to string if corrupted)
-- Always clear on logout via `removeToken()` + store `clearUserInfo()`
+### 存储持久化
+- 用户信息: 通过 `Storage.ts` 辅助函数的双策略（`getSessionUserInfoItem`, `getUserInfoItem`）
+- 搜索历史: JSON 序列化，读取时解析（损坏时回退到字符串）
+- 登出时总是通过 `removeToken()` + store `clearUserInfo()` 清除
 
-## Cross-Component Communication
+## 跨组件通信
 
-| Pattern | Usage | Example |
+| 模式 | 用途 | 示例 |
 |---------|-------|---------|
-| **Pinia Store** | Global user state, auth status | `useUserStore().userInfo` |
-| **Route Params** | Pass data between views | `route.params.userId` |
-| **Props/Emits** | Parent-child (Header.vue ↔ views) | Header receives user via prop |
-| **URL Query** | Pagination, filters | `?page=2&pageSize=10` |
+| **Pinia Store** | 全局用户状态，认证状态 | `useUserStore().userInfo` |
+| **路由参数** | 在视图间传递数据 | `route.params.userId` |
+| **Props/Emits** | 父子组件（Header.vue ↔ 视图） | Header 通过 prop 接收用户 |
+| **URL 查询** | 分页，过滤 | `?page=2&pageSize=10` |
 
-## Error Handling Patterns
+## 错误处理模式
 
-1. **API Errors**: Caught by request interceptor; ElMessage shown; promise rejected
-2. **Validation**: Pre-submission checks in components (e.g., title not empty)
-3. **Network Failures**: Generic "网络异常" message; retry logic left to components
-4. **Auth Errors**: 2001 (expired), 401 (unauthorized) auto-redirect to `/Login`
+1. **API 错误**: 被请求拦截器捕获；显示 ElMessage；拒绝 promise
+2. **验证**: 在组件中提交前检查（例如：标题不为空）
+3. **网络故障**: 通用"网络异常"消息；重试逻辑留给组件
+4. **认证错误**: 2001（过期）、401（未授权）自动重定向到 `/Login`
 
-**Pattern**: Wrap API calls in try-catch, show custom ElMessage if needed, re-throw for interceptor handling.
+**模式**: 在 try-catch 中包装 API 调用，如需要显示自定义 ElMessage，为拦截器处理重新抛出。
 
-## Key Files to Reference
+## 关键参考文件
 
-| File | Purpose |
+| 文件 | 用途 |
 |------|---------|
-| [src/router/index.ts](src/router/index.ts) | Route definitions, guards, meta |
-| [src/stores/user.ts](src/stores/user.ts) | User state, auth persistence |
-| [src/api/Constant.ts](src/api/Constant.ts) | API endpoint prefixes |
-| [src/utils/request.ts](src/utils/request.ts) | HTTP interceptors, error handling |
-| [src/utils/Storage.ts](src/utils/Storage.ts) | Local/session storage helpers |
-| [src/views/ArticleEditor.vue](src/views/ArticleEditor.vue) | Complex form + file upload pattern |
+| [src/router/index.ts](src/router/index.ts) | 路由定义，守卫，元数据 |
+| [src/stores/user.ts](src/stores/user.ts) | 用户状态，认证持久化 |
+| [src/api/Constant.ts](src/api/Constant.ts) | API 端点前缀 |
+| [src/utils/request.ts](src/utils/request.ts) | HTTP 拦截器，错误处理 |
+| [src/utils/Storage.ts](src/utils/Storage.ts) | Local/session storage 辅助函数 |
+| [src/views/ArticleEditor.vue](src/views/ArticleEditor.vue) | 复杂表单 + 文件上传模式 |
 
-## Common Tasks
+## 常见任务
 
-### Adding a New API Endpoint
-1. Define DTO interface in `/src/api/{feature}/{domain}Api.ts`
-2. Export function using `request` with `ApiPrefixConstant.{FEATURE}` + `VersionConstant.V1`
-3. Add route guard in router if auth required
-4. Call from component, catch errors with ElMessage fallback
+### 添加新的 API 端点
+1. 在 `/src/api/{feature}/{domain}Api.ts` 中定义 DTO 接口
+2. 使用 `request` 配合 `ApiPrefixConstant.{FEATURE}` + `VersionConstant.V1` 导出函数
+3. 如需要认证，在路由中添加守卫
+4. 从组件调用，用 ElMessage 回退捕获错误
 
-### Modifying User State
-1. Update `[set|update|remove]UserInfoItem` in Storage.ts if persisting
-2. Call corresponding action in `useUserStore()` to sync ref
-3. Verify dual-storage (session/local) consistency via `rememberMe` flag
+### 修改用户状态
+1. 如持久化，在 Storage.ts 中更新 `[set|update|remove]UserInfoItem`
+2. 调用 `useUserStore()` 中相应的 action 以同步 ref
+3. 通过 `rememberMe` 标志验证双存储（session/local）一致性
 
-### Uploading Files in Forms
-1. Track files in `Map<clientId, File>` during selection
-2. Create `FormData` in API function: `append('JSONfield', JSON.stringify(dto))` + `append(clientId, file)`
-3. Set header `'Content-Type': 'multipart/form-data'`; axios handles boundary
-4. Handle multipart response in interceptor (usually unwraps `.data`)
+### 表单中上传文件
+1. 在选择期间在 `Map<clientId, File>` 中跟踪文件
+2. 在 API 函数中创建 `FormData`: `append('JSONfield', JSON.stringify(dto))` + `append(clientId, file)`
+3. 设置头部 `'Content-Type': 'multipart/form-data'`；axios 处理 boundary
+4. 在拦截器中处理 multipart 响应（通常解包 `.data`）
 
 ---
-**Last updated**: 2026-01-23 | For Vue 3.5 + Vite 7.1 + TypeScript 5.9
+**最后更新**: 2026-01-23 | 适用于 Vue 3.5 + Vite 7.1 + TypeScript 5.9

@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, provide } from 'vue'
 import { ChatDotRound, ArrowDown, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import LikeIcon from '@/components/LikeIcon.vue'
@@ -90,8 +90,10 @@ import UserHoverCard from '@/components/UserHoverCard.vue'
 import CommentItem from './CommentItem.vue'
 import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
 import { formatDate } from '@/utils/format-date'
-import { getCommentReplies, type CommentVO, type GetCommentRepliesParams } from '@/api/comment/CommentApi'
+import { getCommentReplies, isLevel2Comment, isRootComment, type CommentVO, type GetCommentRepliesParams } from '@/api/comment/CommentApi'
 // import { getUserProfile } from '@/api/user/UserProfileApi'
+import { getCurrentInstance } from 'vue'
+import { isRef, isReactive } from 'vue'
 
 
 defineOptions({
@@ -102,14 +104,13 @@ const props = defineProps<{
   comment: CommentVO
   articleId: number
 }>()
-
 const emit = defineEmits<{
   (e: 'reply-success', newComment: CommentVO): void
 }>()
 
 // Inject insert function
 const insertOrCleanComment = inject<(node: CommentVO, commentId?: number, isClean?: boolean, isPost?: boolean) => boolean>('insertOrCleanComment')
-
+const toggleLevel2ShowReplyInput = inject<() => void>('toggleLevel2ShowReplyInput')   // TODO: 临时解决，以后优化
 // State
 const showComments = ref(true)
 const showReplyInput = ref(false)
@@ -119,6 +120,13 @@ const loadingReplies = ref(false)
 const hasMoreReplies = ref(true)
 const replyCursor = ref<{ likeCount?: number, createTime?: number, id?: number } | undefined>(undefined)  // 游标
 
+// TODO: 发表评论触发修改数据后没能响应式更新，不知道为什么，决定临时解决方案如下
+if (isLevel2Comment(props.comment)) {
+  // 当前组件为二级评论,给三级评论组件提供一个方法
+  provide('toggleLevel2ShowReplyInput', () => {
+    showReplyInput.value = showReplyInput.value ? false : true
+  })
+}
 // 计算逻辑，用于判断是否还有更多回复
 const hasRepliesToLoad = computed(() => {
   if (props.comment.parentId !== undefined && props.comment.rootId !== undefined &&props.comment.parentId !== props.comment.rootId) return false; // 三级评论不显示查看更多回复
@@ -148,12 +156,18 @@ function handleReplySuccess(newComment: CommentVO) {
       // 3级及以上的评论
       console.log('wodjawiogjwaofjaw')
       inserted = insertOrCleanComment(newComment, props.comment.id, false, true)
+      // TODO 临时解决方案，笑死我了加个这函数就神奇的解决了触发不了响应式更新渲染三级评论组件的问题。也是造了个屎山，维护的评论树冗余的一批，以后再改成class来维护了，就先这样了
+      if (toggleLevel2ShowReplyInput !== undefined) {
+        toggleLevel2ShowReplyInput()
+        toggleLevel2ShowReplyInput()
+       }
     } else {
       // 二级及以下的评论
       inserted = insertOrCleanComment(newComment, undefined, false, true)
     }
     if (inserted) {
        props.comment.replyCount++
+       emit('reply-success', newComment)
     }
     console.log('children -> ', props.comment.children)
   } else {
@@ -166,13 +180,6 @@ function handleReplySuccess(newComment: CommentVO) {
 
 function onChildReplySuccess(newComment: CommentVO) {
   console.log('OOOOOOOOOOOOOOOOOOOOOOOOOOOOKKKKKKKKKKKKKKKKKKKKKK')
-  // Bubble up if needed, or just handle locally?
-  // For flat structure in DB but tree in UI:
-  // If I reply to a child, it's technically a reply to this comment (level 2) if it's flattened.
-  // The API says "只针对一级和二级，其他级评论统一扁平化为三级评论".
-  // If this `CommentItem` is Level 1, and `newComment` is Level 2 (reply to Level 1), it goes to `children`.
-  // If `newComment` is Level 3 (reply to Level 2), it goes to Level 2's children.
-  // So we don't need to bubble up to Root.
 }
 
 async function expandReplies() {

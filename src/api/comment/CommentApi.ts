@@ -1,6 +1,9 @@
 import request from '@/utils/request'
 import { ApiPrefixConstant, VersionConstant } from "@/api/Constant";
 import { type UserProfileVO } from "@/api/user/UserProfileApi";
+import type { Ref } from "vue";
+import { triggerRef } from "vue";
+import { tr } from 'element-plus/es/locales.mjs';
 
 export interface CommentVO {
   id: number;
@@ -135,13 +138,21 @@ function buildIdMap(treeArray: CommentVO[], map = new Map<number, CommentVO>()) 
   return map;
 }
 
+export function isLevel2Comment(comment: CommentVO): boolean {
+  return comment.parentId !== null && comment.rootId !== null && comment.parentId === comment.rootId;
+}
+
+export function isRootComment(comment: CommentVO): boolean {
+  return comment.parentId === null && comment.rootId === null;
+}
 
 /**
  * 该函数只需调用一次
  * @param treeArray 在获取顶层评论后的TreeArray需要交给该函数维护
  * @returns 返回插入函数 insert(node)
  */
-export function createInserter(treeArray: CommentVO[]) {
+export function createInserter(treeArrayRef: Ref<CommentVO[]>) {
+  const treeArray = treeArrayRef.value;
   const idMap = buildIdMap(treeArray) as Map<number, CommentVO>;
   const pending = new Map<number, CommentVO[]>(); // parentId -> [nodes waiting]
 
@@ -248,7 +259,10 @@ export function createInserter(treeArray: CommentVO[]) {
             return false;
           } else {
           if (!Array.isArray(level2Tree.children)) level2Tree.children = [];
-          level2Tree.children.unshift(nodeCopy);
+          const parentIndex = level2Tree.children.findIndex(child => child.id === commentId);
+          level2Tree.children.splice(parentIndex + 1, 0, nodeCopy);
+          triggerRef(treeArrayRef);
+          //level2Tree.children.unshift(nodeCopy);
           idMap.set(node.id, nodeCopy)
           console.log("level2Tree -> ", level2Tree);
           return true;
