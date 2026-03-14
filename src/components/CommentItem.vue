@@ -27,10 +27,17 @@
         <div class="comment-actions">
           <span 
             class="action-item" 
-            :class="{ liked: isLiked }" 
-            @click="handleLike"
+            :class="{ liked: voteType === 1 }" 
+            @click="handleVote(1)"
           >
             <el-icon><LikeIcon /></el-icon> {{ comment.likeCount || 0 }}
+          </span>
+          <span
+            class="action-item"
+            :class="{ disliked: voteType === -1 }"
+            @click="handleVote(-1)"
+          >
+            <el-icon><Bottom /></el-icon> {{ comment.dislikeCount || 0 }}
           </span>
           <span class="action-item" @click="toggleReplyBox">
             <el-icon><ChatDotRound /></el-icon> {{ comment.replyCount || 0 }}
@@ -80,8 +87,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, provide } from 'vue'
-import { ChatDotRound, ArrowDown, Loading } from '@element-plus/icons-vue'
+import { ref, computed, inject, provide, watch } from 'vue'
+import { ChatDotRound, ArrowDown, Loading, Bottom } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import LikeIcon from '@/components/LikeIcon.vue'
 import CommentInput from '@/components/CommentInput.vue'
@@ -90,10 +97,11 @@ import UserHoverCard from '@/components/UserHoverCard.vue'
 import CommentItem from './CommentItem.vue'
 import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
 import { formatDate } from '@/utils/format-date'
-import { getCommentReplies, isLevel2Comment, isRootComment, type CommentVO, type GetCommentRepliesParams } from '@/api/comment/CommentApi'
+import { getCommentReplies, isLevel2Comment, isRootComment, voteComment, type CommentVO, type CommentVoteType, type GetCommentRepliesParams } from '@/api/comment/CommentApi'
 // import { getUserProfile } from '@/api/user/UserProfileApi'
 import { getCurrentInstance } from 'vue'
 import { isRef, isReactive } from 'vue'
+import { getUserProfile } from '@/api/user/UserProfileApi'
 
 
 defineOptions({
@@ -114,11 +122,26 @@ const toggleLevel2ShowReplyInput = inject<() => void>('toggleLevel2ShowReplyInpu
 // State
 const showComments = ref(true)
 const showReplyInput = ref(false)
-const isLiked = ref(false) // Local like state (should ideally sync with backend or store)
+
+function normalizeVoteType(value?: number | null): CommentVoteType {
+  if (value === 1) return 1
+  if (value === -1) return -1
+  return 0
+}
+
+const voteType = ref<CommentVoteType>(normalizeVoteType(props.comment.currentUserVote)) // 1 点赞 | -1 拉踩 | 0 无状态
+const voting = ref(false)
 const repliesExpanded = ref(false)  // 检查子评论是否展开
 const loadingReplies = ref(false)
 const hasMoreReplies = ref(true)
 const replyCursor = ref<{ likeCount?: number, createTime?: number, id?: number } | undefined>(undefined)  // 游标
+
+watch(
+  () => props.comment.currentUserVote,
+  (nextVote) => {
+    voteType.value = normalizeVoteType(nextVote)
+  }
+)
 
 // TODO: 发表评论触发修改数据后没能响应式更新，不知道为什么，决定临时解决方案如下
 if (isLevel2Comment(props.comment)) {
@@ -138,17 +161,54 @@ function toggleReplyBox() {
   showReplyInput.value = !showReplyInput.value
 }
 
-function handleLike() {
-  // Toggle UI state immediately for responsiveness
-  isLiked.value = !isLiked.value
-  props.comment.likeCount += isLiked.value ? 1 : -1
+function applyVoteState(prev: CommentVoteType, next: CommentVoteType) {
+  let likeCount = Number(props.comment.likeCount ?? 0)
+  let dislikeCount = Number(props.comment.dislikeCount ?? 0)
+
+  if (prev === 1) likeCount = Math.max(likeCount - 1, 0)
+  if (prev === -1) dislikeCount = Math.max(dislikeCount - 1, 0)
+
+  if (next === 1) likeCount += 1
+  if (next === -1) dislikeCount += 1
+
+  props.comment.likeCount = likeCount
+  props.comment.dislikeCount = dislikeCount
+  props.comment.currentUserVote = next
+  voteType.value = next
+}
+
+function resolveNextVoteType(target: Exclude<CommentVoteType, 0>): CommentVoteType {
+  if (target === 1) {
+    return voteType.value === 1 ? 0 : 1
+  }
+
+  return voteType.value === -1 ? 0 : -1
+}
+
+async function handleVote(target: Exclude<CommentVoteType, 0>) {
+  if (voting.value) return
+
+  const prev = voteType.value
+  const next = resolveNextVoteType(target)
+  applyVoteState(prev, next)
+  voting.value = true
+
+  try {
+    await voteComment(props.comment.id, next)
+  } catch (error) {
+    applyVoteState(next, prev)
+    console.error('Vote failed:', error)
+    ElMessage.error('操作失败，请稍后重试')
+  } finally {
+    voting.value = false
+  }
 }
 
 // 该用户回复评论成功后的处理
-function handleReplySuccess(newComment: CommentVO) {
+async function handleReplySuccess(newComment: CommentVO) {
   console.log('FUUUUUUUUUUUUUUUUUUUUUUUUUUUUUCKhandleReplySuccess')
   showReplyInput.value = false
-  
+  newComment.userProfileVO = await getUserProfile(newComment.userId)  // 获取用户信息以显示头像和用户名
   // If insertComment is available, use it.
   if (insertOrCleanComment) {
     let inserted = false
@@ -308,6 +368,10 @@ async function fetchReplies() {
 
 .action-item:hover, .action-item.liked {
   color: #409eff;
+}
+
+.action-item.disliked {
+  color: #f56c6c;
 }
 
 .reply-input-wrapper {

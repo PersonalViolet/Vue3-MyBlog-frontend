@@ -5,7 +5,12 @@
       <div class="author-sidebar">
         <el-card class="author-card" v-if="authorInfo" shadow="hover">
           <div class="author-header">
-            <el-avatar :size="64" :src="authorInfo.avatarUrl || defaultAvatar" class="author-avatar" />
+            <el-avatar
+              :size="64"
+              :src="authorInfo.avatarUrl || defaultAvatar"
+              class="author-avatar"
+              @click="goToAuthorProfile"
+            />
             <h3 class="author-name">{{ authorInfo.username }}</h3>
             <p class="author-intro">{{ authorInfo.intro || '这个人很懒，什么都没写~' }}</p>
           </div>
@@ -183,13 +188,23 @@ const isArticleLiked = ref(false)
 
 function handleArticleLike() {
   if (!articleDetail.value?.article) return
+  const currentLikes = Number(articleDetail.value.article.likes ?? 0)
   isArticleLiked.value = !isArticleLiked.value
+
   // 更新点赞数显示
   if (isArticleLiked.value) {
-    articleDetail.value.article.likes = (articleDetail.value.article.likes || 0) + 1
+    articleDetail.value.article.likes = currentLikes + 1
   } else {
-    articleDetail.value.article.likes = Math.max((articleDetail.value.article.likes || 0) - 1, 0)
+    articleDetail.value.article.likes = Math.max(currentLikes - 1, 0)
   }
+}
+
+function goToAuthorProfile() {
+  if (!userId) return
+  router.push({
+    path: '/Person',
+    query: { userId: String(userId) }
+  })
 }
 
 // 自动加载更多 (Infinite Scroll)
@@ -641,6 +656,7 @@ onUnmounted(() => {
   border: 2px solid #fff;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   margin-bottom: 12px;
+  cursor: pointer;
 }
 
 .author-name {

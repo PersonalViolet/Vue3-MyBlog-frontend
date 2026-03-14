@@ -194,20 +194,13 @@ async function fetchRootComments(isInitial = false) {
   }
 }
 
-function handleRootSubmitSuccess(newComment: CommentVO) {
+async function handleRootSubmitSuccess(newComment: CommentVO) {
   // Prepend to list
+  newComment.userProfileVO = await getUserProfile(newComment.userId)  // 获取用户信息以显示头像和用户名
   insertOrClean(newComment, undefined, false, true)
 }
 
 let timer: number | null = null
-onMounted(() => { 
-    // 每 5 秒执行一次的函数
-  timer = window.setInterval(() => {
-    console.log(commentsTree.value)
-    // 在这里写你需要执行的逻辑
-  }, 5000)
-})
-// Lifecycle
 onMounted(() => {
   // Intersection Observer for Lazy Load of the Component / First Page
   observer = new IntersectionObserver((entries) => {

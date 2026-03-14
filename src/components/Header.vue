@@ -212,7 +212,12 @@ function handleButtonClick(text: string) {
 // 搜索相关数据
 const searchText = ref('') // 搜索输入框内容
 const showHistory = ref(false) // 控制搜索历史面板显示隐藏
-const searchHistory = ref<string[]>(JSON.parse(getSearchHistoryItem() || '[]')) // 搜索历史数据
+const historyCache = getSearchHistoryItem()
+const searchHistory = ref<string[]>(
+  Array.isArray(historyCache)
+    ? historyCache
+    : (typeof historyCache === 'string' && historyCache.trim() ? [historyCache.trim()] : [])
+) // 搜索历史数据
 const searchContainerRef = ref(null) // 用于绑定搜索容器 DOM 元素
 
 // 使用 store 中的头像
@@ -234,16 +239,24 @@ function showSearchHistory() {
 
 // 执行搜索
 function handleSearch() {
-  if (searchText.value.trim()) {
-    if (!searchHistory.value.includes(searchText.value)) {
-      searchHistory.value.unshift(searchText.value)
-      setSearchHistoryItem(JSON.stringify(searchHistory.value))
+  const keyword = searchText.value.trim()
+  if (keyword) {
+    if (!searchHistory.value.includes(keyword)) {
+      searchHistory.value.unshift(keyword)
       if (searchHistory.value.length > 10) {
         searchHistory.value.pop()
       }
+      setSearchHistoryItem(JSON.stringify(searchHistory.value))
     }
+
     showHistory.value = false
-    console.log('搜索内容:', searchText.value)
+    router.push({
+      path: '/search',
+      query: {
+        keyword,
+        type: 'article'
+      }
+    })
   }
 }
 

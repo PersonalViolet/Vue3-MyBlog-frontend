@@ -11,12 +11,22 @@
         <el-button @click="togglePreview">
           {{ showPreview ? '编辑模式' : '预览模式' }}
         </el-button>
+        <el-button @click="handleCoverAction">
+          {{ hasCoverAsset ? '查看封面' : '上传封面' }}
+        </el-button>
         <el-button type="info" :loading="submitting" @click="handleSubmit(false)">
           保存文章
         </el-button>
         <el-button type="primary" :loading="submitting" @click="handleSubmit(true)">
           发布文章
         </el-button>
+        <input
+          type="file"
+          ref="coverFileInput"
+          style="display: none"
+          accept="image/*"
+          @change="handleCoverFileChange"
+        />
       </div>
     </div>
 
@@ -157,11 +167,22 @@
         <div class="markdown-body" v-html="renderedContent"></div>
       </div>
     </div>
+
+    <el-dialog v-model="coverPreviewVisible" title="封面预览" width="520px" destroy-on-close>
+      <div class="cover-preview-dialog">
+        <img v-if="coverPreviewUrl" :src="coverPreviewUrl" alt="Cover preview" class="cover-preview-image" />
+        <el-empty v-else description="暂无封面" />
+      </div>
+      <template #footer>
+        <el-button @click="coverPreviewVisible = false">关闭</el-button>
+        <el-button type="primary" @click="changeCoverFromDialog">修改封面</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { Plus, Link, Picture, MoreFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { v4 as uuidv4 } from 'uuid'
@@ -181,10 +202,15 @@ const showPreview = ref(false)
 const splitView = ref(true) // 是否分屏显示（大屏默认分屏）
 const fileInputs = ref<HTMLInputElement[]>([])
 const mdFileInput = ref<HTMLInputElement | null>(null)
+const coverFileInput = ref<HTMLInputElement | null>(null)
 const activeBlockIndex = ref<number>(-1)
 const inputRefs = ref<Record<number, any>>({})
+const coverPreviewVisible = ref(false)
+const coverPreviewUrl = ref('')
+const coverAssetFile = ref<File | null>(null)
 
 const maxImgSize = 10 * 1024 * 1024
+const COVER_ASSET_KEY = 'CoverAsset'
 
 // Block Type 定义
 const blockTypeOptions = [
@@ -219,6 +245,7 @@ const articleDraft = reactive<{
 
 // 文件暂存 Map<clientId, File>
 const fileMap = new Map<string, File>()
+const hasCoverAsset = computed(() => !!coverAssetFile.value && !!coverPreviewUrl.value)
 
 // 初始化
 onMounted(() => {
@@ -238,6 +265,14 @@ onMounted(() => {
   // 响应式布局检查
   checkResponsive()
   window.addEventListener('resize', checkResponsive)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkResponsive)
+
+  if (coverPreviewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(coverPreviewUrl.value)
+  }
 })
 
 function setInputRef(el: any, index: number) {
@@ -321,11 +356,16 @@ function checkResponsive() {
 
 // 块管理
 function addBlock() {
+  let clientId = uuidv4()
+  // 防御性检查：若生成的 ID 恰好为 CoverAsset（极罕见），则重新生成
+  while (clientId === 'CoverAsset') {
+    clientId = uuidv4()
+  }
   const newBlock: EditableBlock = {
     seq: 0, // 提交时重新计算
     blockType: 'paragraph',
     text: '',
-    clientId: uuidv4()
+    clientId: clientId
   }
   articleDraft.articleBlocks.push(newBlock)
 }
@@ -358,12 +398,56 @@ function handleTypeChange(block: EditableBlock) {
   }
 }
 
+function handleCoverAction() {
+  if (hasCoverAsset.value) {
+    coverPreviewVisible.value = true
+    return
+  }
+
+  triggerCoverSelect()
+}
+
+function triggerCoverSelect() {
+  coverFileInput.value?.click()
+}
+
+function changeCoverFromDialog() {
+  coverPreviewVisible.value = false
+  nextTick(() => {
+    triggerCoverSelect()
+  })
+}
+
+function handleCoverFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (!target.files || target.files.length === 0) {
+    return
+  }
+
+  const file = target.files[0]
+  if (!file) {
+    return
+  }
+
+  if (file.size > maxImgSize) {
+    ElMessage.warning(`封面图片大小不能超过 ${maxImgSize / (1024 * 1024)}MB`)
+    target.value = ''
+    return
+  }
+
+  fileMap.set(COVER_ASSET_KEY, file)
+  coverAssetFile.value = file
+
+  if (coverPreviewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(coverPreviewUrl.value)
+  }
+
+  coverPreviewUrl.value = URL.createObjectURL(file)
+  target.value = ''
+}
+
 // 图片上传处理
 function triggerFileSelect(block: EditableBlock) {
-  // 查找对应的 input
-  // 由于 v-for ref 绑定的是数组，需要自行查找
-  // 这里简化处理：我们通过 document selector 或者直接触发
-  // 更好的方式是动态 ref，但在 v-for 中 ref 是数组
   // 我们根据 data-client-id 查找
   nextTick(() => {
     const inputs = document.querySelectorAll(`input[data-client-id="${block.clientId}"]`)
@@ -887,5 +971,19 @@ async function handleSubmit(isPublish: boolean = false) {
 .tool-btn:hover {
   background-color: #e6e8eb;
   color: #303133;
+}
+
+.cover-preview-dialog {
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cover-preview-image {
+  max-width: 100%;
+  max-height: 420px;
+  border-radius: 8px;
+  object-fit: contain;
 }
 </style>

@@ -128,9 +128,33 @@
       <div class="section">
         <div class="section-header">
           <span class="section-title">{{ isSelf ? '我的文章' : '文章列表' }}</span>
-          <el-button v-if="isSelf" type="primary" :icon="EditPen" @click="goToEditor">
-            发表文章
-          </el-button>
+            <div class="article-header-actions">
+              <el-dropdown trigger="click" @command="handleSortFieldCommand">
+                <el-button>
+                  排序字段：{{ currentSortFieldLabel }}
+                  <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item
+                      v-for="option in sortFieldOptions"
+                      :key="option.value"
+                      :command="option.value"
+                    >
+                      {{ option.value === sortField ? '✓ ' : '' }}{{ option.label }}
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+
+              <el-button @click="toggleSortOrder">
+                {{ sortOrder === 'DESC' ? '降序' : '升序' }}
+              </el-button>
+
+              <el-button v-if="isSelf" type="primary" :icon="EditPen" @click="goToEditor">
+                发表文章
+              </el-button>
+            </div>
         </div>
         <div class="article-list">
           <el-empty
@@ -218,7 +242,7 @@
 
 <script lang="ts" setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { View, Star, Picture, Camera, EditPen } from '@element-plus/icons-vue'
+import { View, Star, Picture, Camera, EditPen, ArrowDown } from '@element-plus/icons-vue'
 import LikeIcon from '@/components/LikeIcon.vue'
 import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -486,13 +510,51 @@ const articleList = ref<Article[]>([])
 const loadingArticles = ref(false)
 const totalArticles = ref(0)
 
+type SortField = 'published_at' | 'update_time' | 'create_time' | 'likes' | 'stars' | 'views'
+type SortOrder = 'ASC' | 'DESC'
+
+const sortField = ref<SortField>('likes')
+const sortOrder = ref<SortOrder>('DESC')
+
+const sortFieldOptions: Array<{ label: string; value: SortField }> = [
+  { label: '发布时间', value: 'published_at' },
+  { label: '更新时间', value: 'update_time' },
+  { label: '创建时间', value: 'create_time' },
+  { label: '点赞数', value: 'likes' },
+  { label: '收藏数', value: 'stars' },
+  { label: '浏览量', value: 'views' }
+]
+
+const currentSortFieldLabel = computed(() => {
+  const match = sortFieldOptions.find((item) => item.value === sortField.value)
+  return match?.label || '点赞数'
+})
+
 const articleQueryDTO = reactive<ArticleQueryDTO>({
   page: 1,
   pageSize: 5,
-  mostLikes: true,
-  mostStars: false,
-  mostViews: false
+  sortBy: `${sortField.value} ${sortOrder.value}` // 默认按点赞数降序排序
 })
+
+function applySortAndFetch() {
+  articleQueryDTO.sortBy = `${sortField.value} ${sortOrder.value}`
+  articleQueryDTO.page = 1
+  fetchArticles()
+}
+
+function handleSortFieldCommand(command: string | number | object) {
+  const nextField = String(command) as SortField
+  const exists = sortFieldOptions.some((item) => item.value === nextField)
+  if (!exists) return
+
+  sortField.value = nextField
+  applySortAndFetch()
+}
+
+function toggleSortOrder() {
+  sortOrder.value = sortOrder.value === 'DESC' ? 'ASC' : 'DESC'
+  applySortAndFetch()
+}
 
 async function fetchArticles() {
   loadingArticles.value = true
@@ -770,6 +832,13 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
+}
+
+.article-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .section-title {

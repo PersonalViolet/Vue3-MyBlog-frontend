@@ -73,6 +73,16 @@ const routes = [
       title: '文章详情',
       permissions: null
     }
+  },
+  {
+    path: '/search',
+    name: 'Search',
+    component: () => import('@/views/Search.vue'),
+    meta: {
+      requiresAuth: false,
+      title: '搜索',
+      permissions: null
+    }
   }
 ]
 const router = createRouter({

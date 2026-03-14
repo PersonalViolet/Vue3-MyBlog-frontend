@@ -4,9 +4,7 @@ import { type PageResult } from '@/api/PageResult'
 export interface ArticleQueryDTO {
   page: number
   pageSize: number
-  mostLikes?: boolean
-  mostStars?: boolean
-  mostViews?: boolean
+  sortBy?: string
 }
 
 

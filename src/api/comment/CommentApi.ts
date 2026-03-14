@@ -22,6 +22,7 @@ export interface CommentVO {
   createTime: string;
   updateTime: string;
   userProfileVO?: UserProfileVO;
+  currentUserVote?: number | null; // 1 点赞 | -1 拉踩 | 0 或 null 无状态
 }
 
 export interface CommentListResult {
@@ -69,6 +70,8 @@ export interface CommentReplyResult {
   id: number | null;
   comments: CommentVO[];
 }
+
+export type CommentVoteType = 1 | 0 | -1
 
 /**
  * 获取文章评论列表（根级评论）
@@ -118,6 +121,19 @@ export function getArticleCommentsByTime(articleId: number, params?: GetComments
     url: ApiPrefixConstant.ARTICLE + VersionConstant.V1 + `/${articleId}/comments/createTimeDesc`,
     method: 'get',
     params
+  })
+}
+
+/**
+ * 评论点赞/拉踩/取消状态
+ * @param commentId 评论 ID
+ * @param type 1 点赞 | -1 拉踩 | 0 取消状态
+ */
+export function voteComment(commentId: number, type: CommentVoteType): Promise<any> {
+  return request({
+    url: ApiPrefixConstant.ARTICLE + VersionConstant.V1 + `/${commentId}/vote`,
+    method: 'put',
+    params: { type }
   })
 }
 
