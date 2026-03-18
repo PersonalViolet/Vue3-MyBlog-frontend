@@ -1,6 +1,6 @@
 <!-- src/views/Register.vue -->
 <template>
-  <div class="register-container">
+  <div :class="['register-container', { 'register-container--modal': modalMode }]">
     <div class="register-form">
       <h2 class="register-title">用户注册</h2>
       <el-form 
@@ -129,8 +129,18 @@ import { ref, reactive } from 'vue'
 import { User, Lock, Message, Key, Plus } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import { register } from '@/api/auth';
-import { uploadFile } from '@/api/file';
 import type { UploadFile } from 'element-plus'
+
+const props = withDefaults(defineProps<{
+  modalMode?: boolean
+}>(), {
+  modalMode: false
+})
+
+const emit = defineEmits<{
+  (e: 'switch-to-login'): void
+  (e: 'register-success'): void
+}>()
 
 // 表单数据
 const registerForm = reactive({
@@ -231,9 +241,15 @@ const handleRegister = async () => {
     });
     
     // 3秒后跳转到登录页面
-    setTimeout(() => {
-      router.push('/login');
-    }, 3000);
+    if (props.modalMode) {
+      setTimeout(() => {
+        emit('register-success')
+      }, 400)
+    } else {
+      setTimeout(() => {
+        router.push('/login');
+      }, 3000);
+    }
   } catch (err) {
     console.error('注册失败:', err);
     // 处理注册失败逻辑，例如显示错误消息
@@ -246,6 +262,11 @@ const handleRegister = async () => {
 
 // 跳转到登录页
 const goToLogin = () => {
+  if (props.modalMode) {
+    emit('switch-to-login')
+    return
+  }
+
   router.push('/login')
 }
 </script>
@@ -259,6 +280,19 @@ const goToLogin = () => {
   height: 100vh;
   background: var(--login-bg, linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%));
   overflow: hidden;
+}
+
+.register-container--modal {
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.register-container--modal .register-form {
+  max-width: none;
+  margin: 0;
+  padding: 34px 28px 24px;
 }
 
 /* 注册表单样式 */

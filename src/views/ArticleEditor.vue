@@ -190,6 +190,7 @@ import MarkdownIt from 'markdown-it'
 import { saveArticle, uploadMarkdownArticle, type ArticleDraftDTO, type ArticleBlockDraftDTO } from '@/api/article/articleEditorApi'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { openLogin } from '@/utils/authModal'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -252,7 +253,7 @@ onMounted(() => {
   // 检查权限
   if (!userStore.userInfo) {
     ElMessage.warning('请先登录')
-    router.push('/Login')
+    openLogin({ source: 'editor-access' })
     return
   }
   // 这里可以扩展具体的权限检查逻辑

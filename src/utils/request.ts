@@ -1,11 +1,7 @@
 import axios from 'axios'
 import { ElMessage, ElLoading } from 'element-plus' // 若使用 Element Plus，用于提示和加载动画
 import { getToken, removeToken } from './auth' // 假设存在 auth.js 管理 Token（见下文）
-import { useRouter } from 'vue-router'
-
-
-// router
-const router = useRouter()
+import { openLogin } from './authModal'
 
 
 // 创建 axios 实例
@@ -63,9 +59,7 @@ request.interceptors.response.use(
       if (res.code === 2001) {
         ElMessage.error('登录已过期，请重新登录')
         removeToken() // 清除无效 Token
-        setTimeout(() => {
-          router.push('/Login') // 跳转到登录页
-        }, 1500)
+        openLogin({ source: '2001' })
       } else {
         ElMessage.error(res.msg || '操作失败')
       }
@@ -89,7 +83,7 @@ request.interceptors.response.use(
         case 401:
           errorMsg = '未授权，请重新登录'
           removeToken()
-          setTimeout(() => { router.push('/Login') }, 1500)
+          openLogin({ source: '401' })
           break
         case 403:
           errorMsg = '没有权限访问'

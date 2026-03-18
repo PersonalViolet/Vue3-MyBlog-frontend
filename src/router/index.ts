@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '@/views/Home.vue'
 import Login from '@/views/Login.vue'
 import { getToken } from '@/utils/auth';
+import { openLogin } from '@/utils/authModal';
 import Register from '@/views/Register.vue';
 import Person from '@/views/Person.vue';
 import ArticleEditor from '@/views/ArticleEditor.vue';
@@ -101,7 +102,11 @@ router.beforeEach((to ,from, next) => {
     if (token && isTokenValidFormat) {
       next()
     } else {
-      next('/Login')
+      openLogin({
+        source: 'route-guard',
+        pendingRoute: to.fullPath
+      })
+      next(false)
     }
   }else {
     next()

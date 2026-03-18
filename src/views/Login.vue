@@ -1,5 +1,5 @@
 <template>
-  <div class="login-container">
+  <div :class="['login-container', { 'login-container--modal': modalMode }]">
     <div class="login-form">
       <h2 class="login-title">用户登录</h2>
       <el-form 
@@ -93,27 +93,30 @@
 import { ref, reactive } from 'vue'
 import { User, Lock } from '@element-plus/icons-vue'
 import { login } from '@/api/auth';
-import { setLocalToken, removeToken, getToken, setSessionToken } from '@/utils/auth'
+import { setLocalToken, removeToken, setSessionToken } from '@/utils/auth'
 import { useRouter } from 'vue-router'
 import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
 import {
     setUserInfoItem, 
-    getUserInfoItem,
     removeUserInfoItem,
     setSessionUserInfoItem,
-    getSessionUserInfoItem,
-    removeSessionUserInfoItem,
-    setSearchHistoryItem, 
-    getSearchHistoryItem, 
-    removeSearchHistoryItem, 
-    setSessionSearchHistoryItem, 
-    getSessionSearchHistoryItem, 
-    removeSessionSearchHistoryItem
+  removeSessionUserInfoItem
  } from '@/utils/Storage'
  import { 
   type UserLoginVO
  } from '@/api/auth/loginApi'
  import { useUserStore } from '@/stores/user'
+
+const props = withDefaults(defineProps<{
+  modalMode?: boolean
+}>(), {
+  modalMode: false
+})
+
+const emit = defineEmits<{
+  (e: 'switch-to-register'): void
+  (e: 'success'): void
+}>()
 
 // 表单数据
 const loginForm = reactive({
@@ -162,6 +165,11 @@ const handleLogin = () => {
     // 更新 Pinia 状态
     userStore.refreshUserInfoFromStorage()
 
+    if (props.modalMode) {
+      emit('success')
+      return
+    }
+
     // 跳转至首页
     router.push('/')
   }).catch(err => {
@@ -170,6 +178,11 @@ const handleLogin = () => {
 }
 // 跳转到注册页面
 const goToRegister = () => {
+  if (props.modalMode) {
+    emit('switch-to-register')
+    return
+  }
+
   router.push('/register')
 }
 
@@ -198,6 +211,19 @@ function rulesDialogCancel() {
   /* 更柔和的背景色选项 */
   background: var(--login-bg, linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%));
   overflow: hidden;
+}
+
+.login-container--modal {
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.login-container--modal .login-form {
+  max-width: none;
+  margin: 0;
+  padding: 34px 28px 24px;
 }
 
 /* 登录表单样式 */

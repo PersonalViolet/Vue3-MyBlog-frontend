@@ -94,6 +94,7 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { uploadFile } from '@/api/file/uploadApi'
 import { postArticleComment, type PostCommentDTO } from '@/api/comment/CommentApi'
+import { openLogin } from '@/utils/authModal'
 import defaultAvatar from '@/assets/icons/defaultAvatar.svg'
 
 const props = defineProps<{
@@ -183,6 +184,7 @@ function removeImage() {
 async function handleSubmit() {
   if (!userStore.userInfo?.id) {
     ElMessage.warning('请先登录')
+    openLogin({ source: 'comment-submit' })
     return
   }
   if (!content.value.trim()) {

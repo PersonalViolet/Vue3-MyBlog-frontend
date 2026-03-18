@@ -3,6 +3,7 @@ import './assets/styles/reset.css' // 引入全局样式
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import Header from '@/components/Header.vue'
+import AuthModalHost from '@/components/auth/AuthModalHost.vue'
 
 const route = useRoute()
 
@@ -18,6 +19,7 @@ const showHeader = computed(() => {
     <el-main :class="{ 'with-header': showHeader }">
       <router-view></router-view>
     </el-main>
+    <AuthModalHost />
   </el-container>
 </template>
 

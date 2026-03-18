@@ -37,7 +37,7 @@
             :class="{ disliked: voteType === -1 }"
             @click="handleVote(-1)"
           >
-            <el-icon><Bottom /></el-icon> {{ comment.dislikeCount || 0 }}
+            <el-icon><DislikeIcon /></el-icon> {{ comment.dislikeCount || 0 }}
           </span>
           <span class="action-item" @click="toggleReplyBox">
             <el-icon><ChatDotRound /></el-icon> {{ comment.replyCount || 0 }}
@@ -88,9 +88,9 @@
 
 <script setup lang="ts">
 import { ref, computed, inject, provide, watch } from 'vue'
-import { ChatDotRound, ArrowDown, Loading, Bottom } from '@element-plus/icons-vue'
+import { ChatDotRound, ArrowDown, Loading } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import LikeIcon from '@/components/LikeIcon.vue'
+import { LikeIcon, DislikeIcon } from '@/components/icons'
 import CommentInput from '@/components/CommentInput.vue'
 import UserHoverCard from '@/components/UserHoverCard.vue'
 // Explicitly import for recursion safety in some environments
@@ -102,6 +102,8 @@ import { getCommentReplies, isLevel2Comment, isRootComment, voteComment, type Co
 import { getCurrentInstance } from 'vue'
 import { isRef, isReactive } from 'vue'
 import { getUserProfile } from '@/api/user/UserProfileApi'
+import { useUserStore } from '@/stores/user'
+import { openLogin } from '@/utils/authModal'
 
 
 defineOptions({
@@ -119,6 +121,7 @@ const emit = defineEmits<{
 // Inject insert function
 const insertOrCleanComment = inject<(node: CommentVO, commentId?: number, isClean?: boolean, isPost?: boolean) => boolean>('insertOrCleanComment')
 const toggleLevel2ShowReplyInput = inject<() => void>('toggleLevel2ShowReplyInput')   // TODO: 临时解决，以后优化
+const userStore = useUserStore()
 // State
 const showComments = ref(true)
 const showReplyInput = ref(false)
@@ -186,6 +189,12 @@ function resolveNextVoteType(target: Exclude<CommentVoteType, 0>): CommentVoteTy
 }
 
 async function handleVote(target: Exclude<CommentVoteType, 0>) {
+  if (!userStore.userInfo?.id) {
+    ElMessage.warning('请先登录')
+    openLogin({ source: 'comment-vote' })
+    return
+  }
+
   if (voting.value) return
 
   const prev = voteType.value
