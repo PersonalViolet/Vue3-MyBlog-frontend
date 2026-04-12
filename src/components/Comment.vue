@@ -200,7 +200,7 @@ async function handleRootSubmitSuccess(newComment: CommentVO) {
   insertOrClean(newComment, undefined, false, true)
 }
 
-let timer: number | null = null
+const timer: number | null = null
 onMounted(() => {
   // Intersection Observer for Lazy Load of the Component / First Page
   observer = new IntersectionObserver((entries) => {

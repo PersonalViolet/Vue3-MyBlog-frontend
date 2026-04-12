@@ -626,7 +626,7 @@ async function loadUserInfo() {
   }
 
   // Case 2: Viewing self (default)
-  let parsedUserInfo = getSessionUserInfoItem() || getUserInfoItem()
+  const parsedUserInfo = getSessionUserInfoItem() || getUserInfoItem()
   
   if (parsedUserInfo && parsedUserInfo.id) {
     try {
@@ -664,7 +664,7 @@ function syncToStore(data: UserProfileVO) {
 
 // 从存储中获取用户信息并解析（备选方案）
 function loadUserInfoFromStorage() {
-  let parsedUserInfo = getSessionUserInfoItem() || getUserInfoItem()
+  const parsedUserInfo = getSessionUserInfoItem() || getUserInfoItem()
   
   if (parsedUserInfo) {
     try {

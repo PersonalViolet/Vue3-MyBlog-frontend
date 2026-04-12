@@ -20,4 +20,6 @@ export class ApiPrefixConstant {
     public static readonly USER = '/api/user';
     // Search模块接口
     public static readonly SEARCH = '/api/search';
+    // Tag模块接口
+    public static readonly TAG = '/api/tag';
 }

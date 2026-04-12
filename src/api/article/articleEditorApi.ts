@@ -16,6 +16,7 @@ export interface ArticleDraftDTO {
   remark?: string
   articleBlocks: ArticleBlockDraftDTO[]
   isPublished?: boolean
+  Tags?: string[]
 }
 
 /**

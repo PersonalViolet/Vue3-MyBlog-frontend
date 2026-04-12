@@ -45,8 +45,15 @@ export interface ArticleBlockVO {
   url: string | null
 }
 
+export interface TagVO {
+  tagId: number
+  displayName: string
+  slug?: string
+}
+
 export interface ArticleDetailVO {
   isOwner: boolean
+  tagVOs: TagVO[]
   article: Article
   articleBlockVO: ArticleBlockVO[]
 }

@@ -197,7 +197,7 @@ watch(
 // 按钮数据
 const headerbuttons = [
   { type: '', text: '首页' },
-  { type: 'primary', text: 'primary' },
+  { type: 'primary', text: '标签搜索' },
   { type: 'success', text: 'success' },
 ] as const
 
@@ -205,6 +205,11 @@ const headerbuttons = [
 function handleButtonClick(text: string) {
   if (text === '首页') {
     router.push('/')
+    return
+  }
+
+  if (text === '标签搜索') {
+    router.push('/tag-search')
   }
 }
 

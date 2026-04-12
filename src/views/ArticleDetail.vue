@@ -57,6 +57,11 @@
             <!-- 文章头部 -->
             <div class="article-header">
               <h1 class="title">{{ articleDetail.article.title }}</h1>
+              <ArticleTagDisplay
+                v-if="articleDetail.tagVOs?.length"
+                :tags="articleDetail.tagVOs"
+                @tag-activate="handleTagActivate"
+              />
               
               <div class="meta-row">
                 <div class="meta-info">
@@ -95,6 +100,7 @@
               <div v-if="articleDetail.article.summary" class="summary-box">
                 {{ articleDetail.article.summary }}
               </div>
+
             </div>
 
             <!-- 文章内容 -->
@@ -162,6 +168,7 @@ import { View, Star, Edit, ArrowDown, Plus, List } from '@element-plus/icons-vue
 import LikeIcon from '@/components/LikeIcon.vue'
 import UserHoverCard from '@/components/UserHoverCard.vue'
 import Comment from '@/components/Comment.vue'
+import ArticleTagDisplay, { type TagActivatePayload } from '@/components/ArticleTagDisplay.vue'
 import { ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import { getArticleDetail, updateArticleStatus, incrementArticleViews, type ArticleDetailVO } from '@/api/article/userArticleApi'
@@ -207,8 +214,33 @@ function goToAuthorProfile() {
   })
 }
 
+function handleTagActivate(payload: TagActivatePayload) {
+  const tagValue = payload.tag.slug?.trim() || payload.tag.displayName?.trim()
+
+  if (!tagValue) {
+    ElMessage.warning('该标签缺少可用标识，暂无法跳转')
+    return
+  }
+
+  const targetRoute = {
+    name: 'TagSearch',
+    query: {
+      tag: tagValue,
+      sortBy: 'createTime'
+    }
+  }
+
+  if (payload.openInNewTab) {
+    const routeUrl = router.resolve(targetRoute)
+    window.open(routeUrl.href, '_blank', 'noopener')
+    return
+  }
+
+  router.push(targetRoute)
+}
+
 // 自动加载更多 (Infinite Scroll)
-let observer: IntersectionObserver | null = null
+const observer: IntersectionObserver | null = null
 
 onMounted(() => {
   fetchArticleDetail()
@@ -711,6 +743,11 @@ onUnmounted(() => {
 
 .author-actions .el-button {
   flex: 1;
+}
+
+.article-header {
+  display: flex;
+  flex-direction: column;
 }
 
 /* 移动端悬浮按钮 */

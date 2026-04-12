@@ -24,10 +24,10 @@ interface OpenAuthModalOptions {
 }
 
 export const authModalState = reactive<AuthModalState>({
-  visible: false,
-  mode: 'login',
-  source: 'manual',
-  pendingRoute: null
+  visible: false,   // 弹窗是否可见
+  mode: 'login',    // 组件模式：登录或注册
+  source: 'manual',   // 弹窗来源：手动打开、401、2001、route-guard、comment-submit、comment-vote、editor-access
+  pendingRoute: null    // 待跳转的路由
 })
 
 function openAuthModal(mode: AuthModalMode, options: OpenAuthModalOptions = {}) {

@@ -84,6 +84,16 @@ const routes = [
       title: '搜索',
       permissions: null
     }
+  },
+  {
+    path: '/tag-search',
+    name: 'TagSearch',
+    component: () => import('@/views/TagSearch.vue'),
+    meta: {
+      requiresAuth: false,
+      title: '标签搜索',
+      permissions: null
+    }
   }
 ]
 const router = createRouter({

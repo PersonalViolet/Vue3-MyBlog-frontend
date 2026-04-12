@@ -1,32 +1,38 @@
 <template>
   <div class="editor-container">
-    <div class="editor-header">
-      <el-input
-        v-model="articleDraft.title"
-        placeholder="请输入文章标题"
-        class="title-input"
-        size="large"
-      />
-      <div class="header-actions">
-        <el-button @click="togglePreview">
-          {{ showPreview ? '编辑模式' : '预览模式' }}
-        </el-button>
-        <el-button @click="handleCoverAction">
-          {{ hasCoverAsset ? '查看封面' : '上传封面' }}
-        </el-button>
-        <el-button type="info" :loading="submitting" @click="handleSubmit(false)">
-          保存文章
-        </el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmit(true)">
-          发布文章
-        </el-button>
-        <input
-          type="file"
-          ref="coverFileInput"
-          style="display: none"
-          accept="image/*"
-          @change="handleCoverFileChange"
+    <div class="editor-top">
+      <div class="editor-header">
+        <el-input
+          v-model="articleDraft.title"
+          placeholder="请输入文章标题"
+          class="title-input"
+          size="large"
         />
+        <div class="header-actions">
+          <el-button @click="togglePreview">
+            {{ showPreview ? '编辑模式' : '预览模式' }}
+          </el-button>
+          <el-button @click="handleCoverAction">
+            {{ hasCoverAsset ? '查看封面' : '上传封面' }}
+          </el-button>
+          <el-button type="info" :loading="submitting" @click="handleSubmit(false)">
+            保存文章
+          </el-button>
+          <el-button type="primary" :loading="submitting" @click="handleSubmit(true)">
+            发布文章
+          </el-button>
+          <input
+            type="file"
+            ref="coverFileInput"
+            style="display: none"
+            accept="image/*"
+            @change="handleCoverFileChange"
+          />
+        </div>
+      </div>
+
+      <div class="header-tag-actions">
+        <ArticleTagInput v-model="articleDraft.Tags" :max-tags="5" :max-tag-length="10" />
       </div>
     </div>
 
@@ -188,6 +194,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { v4 as uuidv4 } from 'uuid'
 import MarkdownIt from 'markdown-it'
 import { saveArticle, uploadMarkdownArticle, type ArticleDraftDTO, type ArticleBlockDraftDTO } from '@/api/article/articleEditorApi'
+import ArticleTagInput from '@/components/ArticleTagInput.vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { openLogin } from '@/utils/authModal'
@@ -236,11 +243,13 @@ const articleDraft = reactive<{
   title: string
   summary: string
   remark: string
+  Tags: string[]
   articleBlocks: EditableBlock[]
 }>({
   title: '',
   summary: '',
   remark: '',
+  Tags: [],
   articleBlocks: []
 })
 
@@ -530,6 +539,7 @@ async function handleMdFileChange(event: Event) {
         content_format: 'blocks', // 显式标记为 blocks
         summary: articleDraft.summary,
         remark: articleDraft.remark,
+        Tags: [...articleDraft.Tags],
         articleBlocks: blocksToSubmit
       }
       
@@ -764,6 +774,7 @@ async function handleSubmit(isPublish: boolean = false) {
       content_format: 'MARKDOWN', // 或其他
       summary: articleDraft.summary,
       remark: articleDraft.remark,
+      Tags: [...articleDraft.Tags],
       articleBlocks: blocksToSubmit
     }
     if (isPublish) {
@@ -797,11 +808,14 @@ async function handleSubmit(isPublish: boolean = false) {
   box-sizing: border-box;
 }
 
+.editor-top {
+  margin-bottom: 20px;
+}
+
 .editor-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
   gap: 20px;
 }
 .header-actions{
@@ -809,6 +823,12 @@ async function handleSubmit(isPublish: boolean = false) {
   align-items: center;
   justify-content: space-between;
   gap: 5px;
+}
+
+.header-tag-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 10px;
 }
 
 .title-input {
@@ -914,6 +934,21 @@ async function handleSubmit(isPublish: boolean = false) {
 
 /* 适配移动端 */
 @media (max-width: 991px) {
+  .editor-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .header-tag-actions {
+    justify-content: flex-start;
+  }
+
   .editor-main {
     flex-direction: column;
   }
